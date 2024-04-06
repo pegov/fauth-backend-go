@@ -9,19 +9,13 @@ import (
 )
 
 type Foo struct {
-	A string `json:"a"`
+	A string `json:"a,omitempty"`
 }
 
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		var foo Foo
-		err := render.BindJSON(r, &foo)
-		if err != nil {
-			return
-		}
-
 		render.JSON(w, http.StatusOK, map[string]any{"message": "ok"})
 	})
 	http.ListenAndServe("localhost:3000", r)
