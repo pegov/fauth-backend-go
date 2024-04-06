@@ -10,3 +10,8 @@ func JSON(w http.ResponseWriter, status int, payload any) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(payload)
 }
+
+func String(w http.ResponseWriter, status int, message string) {
+	w.WriteHeader(status)
+	w.Write([]byte(message))
+}
