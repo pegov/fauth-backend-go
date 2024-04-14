@@ -12,7 +12,7 @@ import (
 )
 
 type JwtBackend interface {
-	Encode(payload *UserClaims, exp time.Duration, tokenType string) (string, error)
+	Encode(payload *User, exp time.Duration, tokenType string) (string, error)
 	Decode(token string, tokenType string) (*UserClaims, error)
 }
 
@@ -44,10 +44,15 @@ func NewJwtBackend(privateKeyBytes []byte, publicKeyBytes []byte, currentKid str
 	}
 }
 
-func (backend *jwtBackend) Encode(claims *UserClaims, expiration time.Duration, tokenType string) (string, error) {
+func (backend *jwtBackend) Encode(payload *User, expiration time.Duration, tokenType string) (string, error) {
 	token := jwt.New(jwt.SigningMethodEdDSA)
 	token.Header["kid"] = backend.CurrentKid
 
+	claims := UserClaims{
+		ID:       payload.ID,
+		Username: payload.Username,
+		Roles:    payload.Roles,
+	}
 	iat := time.Now()
 	exp := iat.Add(expiration)
 	claims.IssuedAt = jwt.NewNumericDate(iat)

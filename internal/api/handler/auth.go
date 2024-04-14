@@ -3,18 +3,14 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/pegov/fauth-backend-go/internal/http/bind"
-	"github.com/pegov/fauth-backend-go/internal/http/render"
 	"github.com/pegov/fauth-backend-go/internal/model"
 	"github.com/pegov/fauth-backend-go/internal/service"
 )
 
 type AuthHandler interface {
-	Login(w http.ResponseWriter, r *http.Request) error
-	Get(w http.ResponseWriter, r *http.Request) error
+	Register(w http.ResponseWriter, r *http.Request) error
 }
 
 type authHandler struct {
@@ -31,33 +27,35 @@ var (
 	ErrInvalidPathParamType = errors.New("invalid path param type")
 )
 
-func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) error {
-	var request *model.LoginRequest
+func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) error {
+	var request *model.RegisterRequest
 	if err := bind.JSON(r, &request); err != nil {
 		return err
 	}
 
-	user, err := h.authService.Login(request)
+	accessToken, refreshToken, err := h.authService.Register(request)
 	if err != nil {
 		return err
 	}
 
-	render.JSON(w, http.StatusOK, user)
-	return nil
-}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_c",
+		Value:    accessToken,
+		Path:     "/",
+		Domain:   "localhost",
+		MaxAge:   60 * 60 * 6,
+		Secure:   false, // TODO
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_c",
+		Value:    refreshToken,
+		Path:     "/",
+		Domain:   "localhost",
+		MaxAge:   60 * 60 * 24 * 31,
+		Secure:   false, // TODO
+		HttpOnly: true,
+	})
 
-func (h *authHandler) Get(w http.ResponseWriter, r *http.Request) error {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return ErrInvalidPathParamType
-	}
-
-	user, err := h.authService.Get(id)
-	if err != nil {
-		return err
-	}
-
-	render.JSON(w, http.StatusOK, user)
 	return nil
 }

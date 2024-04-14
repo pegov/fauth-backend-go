@@ -20,6 +20,11 @@ func makeHandler(fn HandlerFuncWithError) http.HandlerFunc {
 				render.String(w, http.StatusBadRequest, err.Error())
 			case errors.Is(err, service.ErrUserNotFound):
 				render.String(w, http.StatusNotFound, "Not found")
+			case errors.Is(err, service.ErrInvalidCaptcha):
+				render.String(w, http.StatusBadRequest, err.Error())
+			case errors.Is(err, service.ErrUserAlreadyExistsEmail),
+				errors.Is(err, service.ErrUserAlreadyExistsUsername):
+				render.String(w, http.StatusBadRequest, err.Error())
 			default:
 				log.Println(err)
 				render.String(w, http.StatusInternalServerError, "Internal server error")
