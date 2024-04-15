@@ -28,6 +28,7 @@ func NewRouter() chi.Router {
 	authHandler := handler.NewAuthHandler(authService)
 	authSubRouter := chi.NewRouter()
 	authSubRouter.Post("/register", makeHandler(authHandler.Register))
+	authSubRouter.Post("/login", makeHandler(authHandler.Login))
 	r.Mount("/api/v1/users", authSubRouter)
 
 	return r

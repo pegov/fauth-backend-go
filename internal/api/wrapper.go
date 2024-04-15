@@ -23,8 +23,12 @@ func makeHandler(fn HandlerFuncWithError) http.HandlerFunc {
 			case errors.Is(err, service.ErrInvalidCaptcha):
 				render.String(w, http.StatusBadRequest, err.Error())
 			case errors.Is(err, service.ErrUserAlreadyExistsEmail),
-				errors.Is(err, service.ErrUserAlreadyExistsUsername):
+				errors.Is(err, service.ErrUserAlreadyExistsUsername),
+				errors.Is(err, service.ErrUserPasswordNotSet):
 				render.String(w, http.StatusBadRequest, err.Error())
+			case errors.Is(err, service.ErrUserNotActive),
+				errors.Is(err, service.ErrPasswordVerification):
+				render.String(w, http.StatusUnauthorized, "Unauthorized")
 			default:
 				log.Println(err)
 				render.String(w, http.StatusInternalServerError, "Internal server error")

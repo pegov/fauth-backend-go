@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/model"
@@ -12,6 +13,7 @@ import (
 
 type AuthService interface {
 	Register(request *model.RegisterRequest) (string, string, error)
+	Login(request *model.LoginRequest) (string, string, error)
 }
 
 type authService struct {
@@ -39,6 +41,9 @@ var (
 	ErrUserNotFound              = errors.New("user not found")
 	ErrUserAlreadyExistsEmail    = errors.New("email already exists")
 	ErrUserAlreadyExistsUsername = errors.New("username already exists")
+	ErrUserNotActive             = errors.New("user not active") // 401
+	ErrUserPasswordNotSet        = errors.New("password not set")
+	ErrPasswordVerification      = errors.New("user password verification") // 401
 	ErrInvalidCaptcha            = errors.New("invalid captcha")
 )
 
@@ -91,6 +96,44 @@ func (s *authService) Register(request *model.RegisterRequest) (string, string, 
 	if err != nil {
 		return "", "", err
 	}
+
+	payload := token.User{
+		ID:       user.ID,
+		Username: user.Username,
+		Roles:    []string{},
+	}
+	a, err := s.tokenBackend.Encode(&payload, 60*60*6, token.AccessTokenType)
+	if err != nil {
+		return "", "", err
+	}
+	r, err := s.tokenBackend.Encode(&payload, 60*60*24*31, token.RefreshTokenType)
+	if err != nil {
+		return "", "", err
+	}
+
+	return a, r, nil
+}
+
+func (s *authService) Login(request *model.LoginRequest) (string, string, error) {
+	login := strings.TrimSpace(request.Login)
+	user, err := s.userRepo.GetByLogin(login)
+	if err != nil {
+		return "", "", ErrUserNotFound
+	}
+
+	if !user.Active {
+		return "", "", ErrUserNotActive
+	}
+
+	if user.Password == nil {
+		return "", "", ErrUserPasswordNotSet
+	}
+
+	if s.passwordHasher.Compare([]byte(*user.Password), []byte(request.Password)) != nil {
+		return "", "", ErrPasswordVerification
+	}
+
+	s.userRepo.UpdateLastLogin(user.ID)
 
 	payload := token.User{
 		ID:       user.ID,
