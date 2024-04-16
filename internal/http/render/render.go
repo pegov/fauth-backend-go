@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-func JSON(w http.ResponseWriter, status int, payload any) {
+func JSON(w http.ResponseWriter, status int, payload any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
+	return json.NewEncoder(w).Encode(payload)
 }
 
 func String(w http.ResponseWriter, status int, message string) {

@@ -14,6 +14,8 @@ import (
 type AuthService interface {
 	Register(request *model.RegisterRequest) (string, string, error)
 	Login(request *model.LoginRequest) (string, string, error)
+	Token(accessToken string) (*token.User, error)
+	RefreshToken(refreshToken string) (string, error)
 }
 
 type authService struct {
@@ -150,4 +152,43 @@ func (s *authService) Login(request *model.LoginRequest) (string, string, error)
 	}
 
 	return a, r, nil
+}
+
+var (
+	ErrTokenDecoding = errors.New("token decoding error")
+)
+
+func (s *authService) Token(accessToken string) (*token.User, error) {
+	user, err := s.tokenBackend.Decode(accessToken, token.AccessTokenType)
+	if err != nil {
+		return nil, ErrTokenDecoding
+	}
+
+	return token.UserPayloadFromUserClaims(user), nil
+}
+
+func (s *authService) RefreshToken(refreshToken string) (string, error) {
+	refreshTokenClaims, err := s.tokenBackend.Decode(refreshToken, token.AccessTokenType)
+	if err != nil {
+		return "", ErrTokenDecoding
+	}
+
+	// TODO: check ban and kick list, mass ban ts
+
+	user, err := s.userRepo.Get(refreshTokenClaims.ID)
+	if err != nil {
+		return "", err
+	}
+
+	payload := token.User{
+		ID:       user.ID,
+		Username: user.Username,
+		Roles:    []string{},
+	}
+	a, err := s.tokenBackend.Encode(&payload, 60*60*6, token.AccessTokenType)
+	if err != nil {
+		return "", err
+	}
+
+	return a, nil
 }
