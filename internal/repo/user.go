@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/pegov/fauth-backend-go/internal/entity"
 	"github.com/pegov/fauth-backend-go/internal/model"
@@ -22,11 +23,12 @@ type UserRepo interface {
 }
 
 type userRepo struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache *redis.Client
 }
 
-func NewUserRepo(db *sqlx.DB) UserRepo {
-	return &userRepo{db: db}
+func NewUserRepo(db *sqlx.DB, cache *redis.Client) UserRepo {
+	return &userRepo{db: db, cache: cache}
 }
 
 func (r *userRepo) Create(data *model.UserCreate) (int32, error) {

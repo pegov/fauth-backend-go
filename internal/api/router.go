@@ -19,11 +19,13 @@ func NewRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	db := db.GetDB(os.Getenv("DATABASE_URL"))
-	userRepo := repo.NewUserRepo(db)
+	dbClient := db.GetDB(os.Getenv("DATABASE_URL"))
+	cacheClient := db.GetCache(os.Getenv("CACHE_URL"))
+	userRepo := repo.NewUserRepo(dbClient, cacheClient)
 	captchaClient := captcha.NewReCaptchaClient(os.Getenv("RECAPTCHA_SECRET"))
 	passwordHasher := password.NewBcryptPasswordHasher()
 	tokenBackend := token.NewJwtBackend([]byte("TODO"), []byte("TODO"), "TODO_KID")
+
 	authService := service.NewAuthService(userRepo, captchaClient, passwordHasher, tokenBackend)
 	authHandler := handler.NewAuthHandler(authService)
 	authSubRouter := chi.NewRouter()
