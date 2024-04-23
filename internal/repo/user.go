@@ -20,6 +20,7 @@ type UserRepo interface {
 	GetByLogin(login string) (*entity.User, error)
 	Create(data *model.UserCreate) (int32, error)
 	UpdateLastLogin(id int32) error
+	Ban(id int32) error
 }
 
 type userRepo struct {
@@ -108,5 +109,10 @@ func (r *userRepo) GetByLogin(login string) (*entity.User, error) {
 func (r *userRepo) UpdateLastLogin(id int32) error {
 	now := time.Now().UTC()
 	_, err := r.db.Exec("UPDATE auth_user SET last_login = $1", now)
+	return err
+}
+
+func (r *userRepo) Ban(id int32) error {
+	_, err := r.db.Exec("UPDATE auth_user SET active = false WHERE id = $1", id)
 	return err
 }

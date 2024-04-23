@@ -15,3 +15,7 @@ func String(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
 	w.Write([]byte(message))
 }
+
+func Status(w http.ResponseWriter, status int) {
+	w.WriteHeader(status)
+}

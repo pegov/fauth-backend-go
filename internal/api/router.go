@@ -33,6 +33,12 @@ func NewRouter() chi.Router {
 	authSubRouter.Post("/login", makeHandler(authHandler.Login))
 	authSubRouter.Post("/token", makeHandler(authHandler.Login))
 	authSubRouter.Post("/token/refresh", makeHandler(authHandler.Login))
+
+	adminService := service.NewAdminService(userRepo)
+	adminHandler := handler.NewAdminHandler(adminService)
+	adminSubRouter := chi.NewRouter()
+	adminSubRouter.Post("/ban/{id}", makeHandler(adminHandler.Ban))
+
 	r.Mount("/api/v1/users", authSubRouter)
 
 	return r
