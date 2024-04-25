@@ -21,6 +21,7 @@ type UserRepo interface {
 	Create(data *model.UserCreate) (int32, error)
 	UpdateLastLogin(id int32) error
 	Ban(id int32) error
+	Unban(id int32) error
 }
 
 type userRepo struct {
@@ -114,5 +115,10 @@ func (r *userRepo) UpdateLastLogin(id int32) error {
 
 func (r *userRepo) Ban(id int32) error {
 	_, err := r.db.Exec("UPDATE auth_user SET active = false WHERE id = $1", id)
+	return err
+}
+
+func (r *userRepo) Unban(id int32) error {
+	_, err := r.db.Exec("UPDATE auth_user SET active = true WHERE id = $1", id)
 	return err
 }
