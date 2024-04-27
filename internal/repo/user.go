@@ -1,8 +1,10 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -22,6 +24,8 @@ type UserRepo interface {
 	UpdateLastLogin(id int32) error
 	Ban(id int32) error
 	Unban(id int32) error
+	Kick(ctx context.Context, id int32) error
+	Unkick(ctx context.Context, id int32) error
 }
 
 type userRepo struct {
@@ -121,4 +125,15 @@ func (r *userRepo) Ban(id int32) error {
 func (r *userRepo) Unban(id int32) error {
 	_, err := r.db.Exec("UPDATE auth_user SET active = true WHERE id = $1", id)
 	return err
+}
+
+func (r *userRepo) Kick(ctx context.Context, id int32) error {
+	ts := time.Now().UTC().Unix()
+	key := fmt.Sprintf("users:kick:%d", id)
+	return r.cache.Set(ctx, key, ts, 60*60*6*time.Second).Err()
+}
+
+func (r *userRepo) Unkick(ctx context.Context, id int32) error {
+	key := fmt.Sprintf("users:kick:%d", id)
+	return r.cache.Del(ctx, key).Err()
 }

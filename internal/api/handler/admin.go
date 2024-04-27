@@ -12,6 +12,8 @@ import (
 type AdminHandler interface {
 	Ban(w http.ResponseWriter, r *http.Request) error
 	Unban(w http.ResponseWriter, r *http.Request) error
+	Kick(w http.ResponseWriter, r *http.Request) error
+	Unkick(w http.ResponseWriter, r *http.Request) error
 }
 
 type adminHandler struct {
@@ -24,14 +26,14 @@ func NewAdminHandler(adminService service.AdminService) AdminHandler {
 	}
 }
 
-func (h *adminHandler) Ban(w http.ResponseWriter, r *http.Request) error {
+func actionOnID(w http.ResponseWriter, r *http.Request, action func(int32) error) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return err
 	}
 
-	if err := h.adminService.Ban(int32(id)); err != nil {
+	if err := action(int32(id)); err != nil {
 		return err
 	}
 
@@ -39,17 +41,18 @@ func (h *adminHandler) Ban(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (h *adminHandler) Ban(w http.ResponseWriter, r *http.Request) error {
+	return actionOnID(w, r, h.adminService.Ban)
+}
+
 func (h *adminHandler) Unban(w http.ResponseWriter, r *http.Request) error {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return err
-	}
+	return actionOnID(w, r, h.adminService.Unban)
+}
 
-	if err := h.adminService.Unban(int32(id)); err != nil {
-		return err
-	}
+func (h *adminHandler) Kick(w http.ResponseWriter, r *http.Request) error {
+	return actionOnID(w, r, h.adminService.Unban)
+}
 
-	render.Status(w, http.StatusOK)
-	return nil
+func (h *adminHandler) Unkick(w http.ResponseWriter, r *http.Request) error {
+	return actionOnID(w, r, h.adminService.Unban)
 }
