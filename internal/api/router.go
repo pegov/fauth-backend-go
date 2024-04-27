@@ -2,6 +2,7 @@ package api
 
 import (
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,6 +19,7 @@ import (
 func NewRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(middleware.Timeout(5 * time.Second))
 
 	dbClient := db.GetDB(os.Getenv("DATABASE_URL"))
 	cacheClient := db.GetCache(os.Getenv("CACHE_URL"))

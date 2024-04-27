@@ -7,10 +7,10 @@ import (
 )
 
 type AdminService interface {
-	Ban(id int32) error
-	Unban(id int32) error
-	Kick(id int32) error
-	Unkick(id int32) error
+	Ban(ctx context.Context, id int32) error
+	Unban(ctx context.Context, id int32) error
+	Kick(ctx context.Context, id int32) error
+	Unkick(ctx context.Context, id int32) error
 }
 
 type adminService struct {
@@ -25,24 +25,7 @@ func NewAdminService(
 	}
 }
 
-func (s *adminService) actionOnID(id int32, action func(int32) error) error {
-	user, err := s.userRepo.Get(id)
-	if err != nil {
-		return err
-	}
-
-	if user == nil {
-		return ErrUserNotFound
-	}
-
-	if err := action(id); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *adminService) actionWithContextOnID(ctx context.Context, id int32, action func(context.Context, int32) error) error {
+func (s *adminService) actionOnID(ctx context.Context, id int32, action func(context.Context, int32) error) error {
 	user, err := s.userRepo.Get(id)
 	if err != nil {
 		return err
@@ -59,20 +42,18 @@ func (s *adminService) actionWithContextOnID(ctx context.Context, id int32, acti
 	return nil
 }
 
-func (s *adminService) Ban(id int32) error {
-	return s.actionOnID(id, s.userRepo.Ban)
+func (s *adminService) Ban(ctx context.Context, id int32) error {
+	return s.actionOnID(ctx, id, s.userRepo.Ban)
 }
 
-func (s *adminService) Unban(id int32) error {
-	return s.actionOnID(id, s.userRepo.Unban)
+func (s *adminService) Unban(ctx context.Context, id int32) error {
+	return s.actionOnID(ctx, id, s.userRepo.Unban)
 }
 
-func (s *adminService) Kick(id int32) error {
-	ctx := context.TODO()
-	return s.actionWithContextOnID(ctx, id, s.userRepo.Kick)
+func (s *adminService) Kick(ctx context.Context, id int32) error {
+	return s.actionOnID(ctx, id, s.userRepo.Kick)
 }
 
-func (s *adminService) Unkick(id int32) error {
-	ctx := context.TODO()
-	return s.actionWithContextOnID(ctx, id, s.userRepo.Unkick)
+func (s *adminService) Unkick(ctx context.Context, id int32) error {
+	return s.actionOnID(ctx, id, s.userRepo.Unkick)
 }

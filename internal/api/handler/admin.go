@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/pegov/fauth-backend-go/internal/http/render"
 	"github.com/pegov/fauth-backend-go/internal/service"
 )
@@ -26,14 +28,14 @@ func NewAdminHandler(adminService service.AdminService) AdminHandler {
 	}
 }
 
-func actionOnID(w http.ResponseWriter, r *http.Request, action func(int32) error) error {
+func actionOnID(w http.ResponseWriter, r *http.Request, action func(context.Context, int32) error) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return err
 	}
 
-	if err := action(int32(id)); err != nil {
+	if err := action(r.Context(), int32(id)); err != nil {
 		return err
 	}
 
