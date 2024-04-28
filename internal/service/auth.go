@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -12,10 +13,10 @@ import (
 )
 
 type AuthService interface {
-	Register(request *model.RegisterRequest) (string, string, error)
-	Login(request *model.LoginRequest) (string, string, error)
-	Token(accessToken string) (*token.User, error)
-	RefreshToken(refreshToken string) (string, error)
+	Register(ctx context.Context, request *model.RegisterRequest) (string, string, error)
+	Login(ctx context.Context, request *model.LoginRequest) (string, string, error)
+	Token(ctx context.Context, accessToken string) (*token.User, error)
+	RefreshToken(ctx context.Context, refreshToken string) (string, error)
 }
 
 type authService struct {
@@ -49,7 +50,7 @@ var (
 	ErrInvalidCaptcha            = errors.New("invalid captcha")
 )
 
-func (s *authService) Register(request *model.RegisterRequest) (string, string, error) {
+func (s *authService) Register(ctx context.Context, request *model.RegisterRequest) (string, string, error) {
 	if err := request.Validate(); err != nil {
 		return "", "", err
 	}
@@ -58,7 +59,7 @@ func (s *authService) Register(request *model.RegisterRequest) (string, string, 
 		return "", "", ErrInvalidCaptcha
 	}
 
-	user, err := s.userRepo.GetByEmail(request.Email)
+	user, err := s.userRepo.GetByEmail(ctx, request.Email)
 	if err != nil {
 		return "", "", err
 	}
@@ -67,7 +68,7 @@ func (s *authService) Register(request *model.RegisterRequest) (string, string, 
 		return "", "", ErrUserAlreadyExistsEmail
 	}
 
-	user, err = s.userRepo.GetByUsername(request.Username)
+	user, err = s.userRepo.GetByUsername(ctx, request.Username)
 	if err != nil {
 		return "", "", err
 	}
@@ -88,13 +89,13 @@ func (s *authService) Register(request *model.RegisterRequest) (string, string, 
 		Verified: false,
 	}
 
-	id, err := s.userRepo.Create(&userCreate)
+	id, err := s.userRepo.Create(ctx, &userCreate)
 	if err != nil {
 		return "", "", err
 	}
 
 	// user != nil
-	user, err = s.userRepo.Get(id)
+	user, err = s.userRepo.Get(ctx, id)
 	if err != nil {
 		return "", "", err
 	}
@@ -116,9 +117,9 @@ func (s *authService) Register(request *model.RegisterRequest) (string, string, 
 	return a, r, nil
 }
 
-func (s *authService) Login(request *model.LoginRequest) (string, string, error) {
+func (s *authService) Login(ctx context.Context, request *model.LoginRequest) (string, string, error) {
 	login := strings.TrimSpace(request.Login)
-	user, err := s.userRepo.GetByLogin(login)
+	user, err := s.userRepo.GetByLogin(ctx, login)
 	if err != nil {
 		return "", "", ErrUserNotFound
 	}
@@ -135,7 +136,7 @@ func (s *authService) Login(request *model.LoginRequest) (string, string, error)
 		return "", "", ErrPasswordVerification
 	}
 
-	s.userRepo.UpdateLastLogin(user.ID)
+	s.userRepo.UpdateLastLogin(ctx, user.ID)
 
 	payload := token.User{
 		ID:       user.ID,
@@ -158,7 +159,7 @@ var (
 	ErrTokenDecoding = errors.New("token decoding error")
 )
 
-func (s *authService) Token(accessToken string) (*token.User, error) {
+func (s *authService) Token(ctx context.Context, accessToken string) (*token.User, error) {
 	user, err := s.tokenBackend.Decode(accessToken, token.AccessTokenType)
 	if err != nil {
 		return nil, ErrTokenDecoding
@@ -167,7 +168,7 @@ func (s *authService) Token(accessToken string) (*token.User, error) {
 	return token.UserPayloadFromUserClaims(user), nil
 }
 
-func (s *authService) RefreshToken(refreshToken string) (string, error) {
+func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (string, error) {
 	refreshTokenClaims, err := s.tokenBackend.Decode(refreshToken, token.AccessTokenType)
 	if err != nil {
 		return "", ErrTokenDecoding
@@ -175,7 +176,7 @@ func (s *authService) RefreshToken(refreshToken string) (string, error) {
 
 	// TODO: check ban and kick list, mass ban ts
 
-	user, err := s.userRepo.Get(refreshTokenClaims.ID)
+	user, err := s.userRepo.Get(ctx, refreshTokenClaims.ID)
 	if err != nil {
 		return "", err
 	}

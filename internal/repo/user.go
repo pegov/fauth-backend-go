@@ -16,12 +16,12 @@ import (
 )
 
 type UserRepo interface {
-	Get(id int32) (*entity.User, error)
-	GetByEmail(email string) (*entity.User, error)
-	GetByUsername(username string) (*entity.User, error)
-	GetByLogin(login string) (*entity.User, error)
-	Create(data *model.UserCreate) (int32, error)
-	UpdateLastLogin(id int32) error
+	Get(ctx context.Context, id int32) (*entity.User, error)
+	GetByEmail(ctx context.Context, email string) (*entity.User, error)
+	GetByUsername(ctx context.Context, username string) (*entity.User, error)
+	GetByLogin(ctx context.Context, login string) (*entity.User, error)
+	Create(ctx context.Context, data *model.UserCreate) (int32, error)
+	UpdateLastLogin(ctx context.Context, id int32) error
 	Ban(ctx context.Context, id int32) error
 	Unban(ctx context.Context, id int32) error
 	Kick(ctx context.Context, id int32) error
@@ -37,7 +37,7 @@ func NewUserRepo(db *sqlx.DB, cache *redis.Client) UserRepo {
 	return &userRepo{db: db, cache: cache}
 }
 
-func (r *userRepo) Create(data *model.UserCreate) (int32, error) {
+func (r *userRepo) Create(ctx context.Context, data *model.UserCreate) (int32, error) {
 	var id int32
 	now := time.Now().UTC()
 	if err := r.db.Get(&id, `
@@ -51,7 +51,7 @@ func (r *userRepo) Create(data *model.UserCreate) (int32, error) {
 	return id, nil
 }
 
-func (r *userRepo) Get(id int32) (*entity.User, error) {
+func (r *userRepo) Get(ctx context.Context, id int32) (*entity.User, error) {
 	var user entity.User
 	if err := r.db.Get(&user, `
 		SELECT id, email, username, password, active, verified, created_at, last_login FROM auth_user WHERE id = $1
@@ -66,7 +66,7 @@ func (r *userRepo) Get(id int32) (*entity.User, error) {
 	return &user, nil
 }
 
-func (r *userRepo) GetByEmail(email string) (*entity.User, error) {
+func (r *userRepo) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
 	var user entity.User
 	if err := r.db.Get(&user, `
 		SELECT id, email, username, password, active, verified, created_at, last_login FROM auth_user WHERE email = $1
@@ -81,7 +81,7 @@ func (r *userRepo) GetByEmail(email string) (*entity.User, error) {
 	return &user, nil
 }
 
-func (r *userRepo) GetByUsername(username string) (*entity.User, error) {
+func (r *userRepo) GetByUsername(ctx context.Context, username string) (*entity.User, error) {
 	var user entity.User
 	if err := r.db.Get(&user, `
 		SELECT id, email, username, password, active, verified, created_at, last_login FROM auth_user WHERE username = $1
@@ -96,9 +96,9 @@ func (r *userRepo) GetByUsername(username string) (*entity.User, error) {
 	return &user, nil
 }
 
-func (r *userRepo) GetByLogin(login string) (*entity.User, error) {
+func (r *userRepo) GetByLogin(ctx context.Context, login string) (*entity.User, error) {
 	if strings.Contains(login, "@") {
-		user, err := r.GetByEmail(login)
+		user, err := r.GetByEmail(ctx, login)
 		if err != nil {
 			return nil, err
 		}
@@ -108,10 +108,10 @@ func (r *userRepo) GetByLogin(login string) (*entity.User, error) {
 		}
 	}
 
-	return r.GetByUsername(login)
+	return r.GetByUsername(ctx, login)
 }
 
-func (r *userRepo) UpdateLastLogin(id int32) error {
+func (r *userRepo) UpdateLastLogin(ctx context.Context, id int32) error {
 	now := time.Now().UTC()
 	_, err := r.db.Exec("UPDATE auth_user SET last_login = $1", now)
 	return err

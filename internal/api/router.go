@@ -26,7 +26,15 @@ func NewRouter() chi.Router {
 	userRepo := repo.NewUserRepo(dbClient, cacheClient)
 	captchaClient := captcha.NewReCaptchaClient(os.Getenv("RECAPTCHA_SECRET"))
 	passwordHasher := password.NewBcryptPasswordHasher()
-	tokenBackend := token.NewJwtBackend([]byte("TODO"), []byte("TODO"), "TODO_KID")
+	privateKey, err := os.ReadFile("./id_ed25519_auth_1.key")
+	if err != nil {
+		panic(err)
+	}
+	publicKey, err := os.ReadFile("./id_ed25519_auth_1.pub")
+	if err != nil {
+		panic(err)
+	}
+	tokenBackend := token.NewJwtBackend(privateKey, publicKey, "1")
 
 	authService := service.NewAuthService(userRepo, captchaClient, passwordHasher, tokenBackend)
 	authHandler := handler.NewAuthHandler(authService)

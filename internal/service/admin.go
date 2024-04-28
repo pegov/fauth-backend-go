@@ -26,7 +26,7 @@ func NewAdminService(
 }
 
 func (s *adminService) actionOnID(ctx context.Context, id int32, action func(context.Context, int32) error) error {
-	user, err := s.userRepo.Get(id)
+	user, err := s.userRepo.Get(ctx, id)
 	if err != nil {
 		return err
 	}

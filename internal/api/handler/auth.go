@@ -39,7 +39,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	accessToken, refreshToken, err := h.authService.Register(request)
+	accessToken, refreshToken, err := h.authService.Register(r.Context(), request)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	accessToken, refreshToken, err := h.authService.Login(request)
+	accessToken, refreshToken, err := h.authService.Login(r.Context(), request)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (h *authHandler) Token(w http.ResponseWriter, r *http.Request) error {
 		return ErrNoTokenCookie
 	}
 
-	user, err := h.authService.Token(v.String())
+	user, err := h.authService.Token(r.Context(), v.String())
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (h *authHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 		return ErrNoTokenCookie
 	}
 
-	accessToken, err := h.authService.RefreshToken(v.String())
+	accessToken, err := h.authService.RefreshToken(r.Context(), v.String())
 	if err != nil {
 		return err
 	}
