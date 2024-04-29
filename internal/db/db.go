@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,25 +11,25 @@ import (
 )
 
 func GetDB(dsn string) *sqlx.DB {
-	log.Printf("Parsing DB config...")
+	slog.Info("Parsing DB config...")
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("Creating DB pool...")
+	slog.Info("Creating DB pool...")
 	pool, err := pgxpool.NewWithConfig(context.TODO(), poolCfg)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Println("Pinging DB...")
+	slog.Info("Pinging DB...")
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
 	defer cancel()
 	if err := pool.Ping(ctx); err != nil {
 		panic(err)
 	}
-	log.Println("DB is online!")
+	slog.Info("DB is online!")
 
 	sqldb := stdlib.OpenDBFromPool(pool)
 	sqldb.SetMaxIdleConns(4)

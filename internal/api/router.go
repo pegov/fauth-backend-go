@@ -18,7 +18,9 @@ import (
 
 func NewRouter() chi.Router {
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(5 * time.Second))
 
 	dbClient := db.GetDB(os.Getenv("DATABASE_URL"))
@@ -36,24 +38,27 @@ func NewRouter() chi.Router {
 	}
 	tokenBackend := token.NewJwtBackend(privateKey, publicKey, "1")
 
-	authService := service.NewAuthService(userRepo, captchaClient, passwordHasher, tokenBackend)
-	authHandler := handler.NewAuthHandler(authService)
-	authSubRouter := chi.NewRouter()
-	authSubRouter.Post("/register", makeHandler(authHandler.Register))
-	authSubRouter.Post("/login", makeHandler(authHandler.Login))
-	authSubRouter.Post("/token", makeHandler(authHandler.Login))
-	authSubRouter.Post("/token/refresh", makeHandler(authHandler.Login))
+	apiV1Router := chi.NewRouter()
 
-	adminService := service.NewAdminService(userRepo)
-	adminHandler := handler.NewAdminHandler(adminService)
-	adminSubRouter := chi.NewRouter()
-	adminSubRouter.Post("/{id}/ban", makeHandler(adminHandler.Ban))
-	adminSubRouter.Post("/{id}/unban", makeHandler(adminHandler.Unban))
-	adminSubRouter.Post("/{id}/kick", makeHandler(adminHandler.Kick))
-	adminSubRouter.Post("/{id}/unkick", makeHandler(adminHandler.Unkick))
+	apiV1Router.Group(func(r chi.Router) {
+		authService := service.NewAuthService(userRepo, captchaClient, passwordHasher, tokenBackend)
+		authHandler := handler.NewAuthHandler(authService)
+		r.Post("/register", makeHandler(authHandler.Register))
+		r.Post("/login", makeHandler(authHandler.Login))
+		r.Post("/token", makeHandler(authHandler.Login))
+		r.Post("/token/refresh", makeHandler(authHandler.Login))
+	})
 
-	r.Mount("/api/v1/users", authSubRouter)
-	r.Mount("/api/v1/users", adminSubRouter)
+	apiV1Router.Group(func(r chi.Router) {
+		adminService := service.NewAdminService(userRepo)
+		adminHandler := handler.NewAdminHandler(adminService)
+		r.Post("/{id}/ban", makeHandler(adminHandler.Ban))
+		r.Post("/{id}/unban", makeHandler(adminHandler.Unban))
+		r.Post("/{id}/kick", makeHandler(adminHandler.Kick))
+		r.Post("/{id}/unkick", makeHandler(adminHandler.Unkick))
+	})
+
+	r.Mount("/api/v1/users", apiV1Router)
 
 	return r
 }
