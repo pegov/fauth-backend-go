@@ -17,6 +17,7 @@ type AuthHandler interface {
 	Token(w http.ResponseWriter, r *http.Request) error
 	RefreshToken(w http.ResponseWriter, r *http.Request) error
 	Logout(w http.ResponseWriter, r *http.Request) error
+	Me(w http.ResponseWriter, r *http.Request) error
 }
 
 type authHandler struct {
@@ -165,5 +166,25 @@ func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 		Secure:   false, // TODO
 		HttpOnly: true,
 	})
+	return nil
+}
+
+func (h *authHandler) Me(w http.ResponseWriter, r *http.Request) error {
+	v, err := r.Cookie("access_c")
+	if err != nil {
+		return ErrNoTokenCookie
+	}
+
+	tokenPayload, err := h.authService.Token(r.Context(), v.String())
+	if err != nil {
+		return err
+	}
+
+	me, err := h.authService.Me(r.Context(), tokenPayload.ID)
+	if err != nil {
+		return err
+	}
+
+	render.JSON(w, http.StatusOK, me)
 	return nil
 }

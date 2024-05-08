@@ -48,6 +48,7 @@ func NewRouter() chi.Router {
 		r.Post("/login", makeHandler(authHandler.Login))
 		r.Post("/token", makeHandler(authHandler.Login))
 		r.Post("/token/refresh", makeHandler(authHandler.Login))
+		r.Post("/me", makeHandler(authHandler.Me))
 	})
 
 	apiV1Router.Group(func(r chi.Router) {

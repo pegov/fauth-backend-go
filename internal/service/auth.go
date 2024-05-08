@@ -17,6 +17,7 @@ type AuthService interface {
 	Login(ctx context.Context, request *model.LoginRequest) (string, string, error)
 	Token(ctx context.Context, accessToken string) (*token.User, error)
 	RefreshToken(ctx context.Context, refreshToken string) (string, error)
+	Me(ctx context.Context, id int32) (*model.Me, error)
 }
 
 type authService struct {
@@ -192,4 +193,13 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (st
 	}
 
 	return a, nil
+}
+
+func (s *authService) Me(ctx context.Context, id int32) (*model.Me, error) {
+	user, err := s.userRepo.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return model.MeFromUser(user), nil
 }

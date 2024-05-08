@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/pegov/fauth-backend-go/internal/entity"
 )
 
 type RegisterRequest struct {
@@ -161,4 +163,22 @@ func validatePassword(password1 string, password2 string) error {
 type LoginRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
+}
+
+type Me struct {
+	ID       int32  `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Verified bool   `json:"verified"`
+	// Roles
+	// OAuth
+}
+
+func MeFromUser(user *entity.User) *Me {
+	return &Me{
+		ID:       user.ID,
+		Email:    user.Email,
+		Username: user.Username,
+		Verified: user.Verified,
+	}
 }
