@@ -175,7 +175,27 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (st
 		return "", ErrTokenDecoding
 	}
 
-	// TODO: check ban and kick list, mass ban ts
+	id := refreshTokenClaims.ID
+	yes, err := s.userRepo.WasRecentlyBanned(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	if yes {
+		return "", ErrUserNotActive
+	}
+
+	yes, err = s.userRepo.IsKicked(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	if yes {
+		// TODO
+		return "", errors.New("user was kicked")
+	}
+
+	// TODO: check mass logout
 
 	user, err := s.userRepo.Get(ctx, refreshTokenClaims.ID)
 	if err != nil {

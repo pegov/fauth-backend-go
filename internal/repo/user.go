@@ -26,6 +26,8 @@ type UserRepo interface {
 	Unban(ctx context.Context, id int32) error
 	Kick(ctx context.Context, id int32) error
 	Unkick(ctx context.Context, id int32) error
+	WasRecentlyBanned(ctx context.Context, id int32) (bool, error)
+	IsKicked(ctx context.Context, id int32) (bool, error)
 }
 
 type userRepo struct {
@@ -136,4 +138,30 @@ func (r *userRepo) Kick(ctx context.Context, id int32) error {
 func (r *userRepo) Unkick(ctx context.Context, id int32) error {
 	key := fmt.Sprintf("users:kick:%d", id)
 	return r.cache.Del(ctx, key).Err()
+}
+
+func (r *userRepo) WasRecentlyBanned(ctx context.Context, id int32) (bool, error) {
+	key := fmt.Sprintf("users:ban:%d", id)
+	if err := r.cache.Get(ctx, key).Err(); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *userRepo) IsKicked(ctx context.Context, id int32) (bool, error) {
+	key := fmt.Sprintf("users:kick:%d", id)
+	if err := r.cache.Get(ctx, key).Err(); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }
