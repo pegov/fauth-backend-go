@@ -46,8 +46,8 @@ func NewRouter() chi.Router {
 		authHandler := handler.NewAuthHandler(authService)
 		r.Post("/register", makeHandler(authHandler.Register))
 		r.Post("/login", makeHandler(authHandler.Login))
-		r.Post("/token", makeHandler(authHandler.Login))
-		r.Post("/token/refresh", makeHandler(authHandler.Login))
+		r.Post("/token", makeHandler(authHandler.Token))
+		r.Post("/token/refresh", makeHandler(authHandler.RefreshToken))
 		r.Post("/me", makeHandler(authHandler.Me))
 	})
 
