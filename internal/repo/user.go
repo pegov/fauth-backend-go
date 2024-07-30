@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ type UserRepo interface {
 	GetByLogin(ctx context.Context, login string) (*entity.User, error)
 	Create(ctx context.Context, data *model.UserCreate) (int32, error)
 	UpdateLastLogin(ctx context.Context, id int32) error
+	GetMassLogout(ctx context.Context) (*time.Time, error)
 	ActivateMassLogout(ctx context.Context, refreshTokenExpiration time.Duration) error
 	DeactivateMassLogout(ctx context.Context) error
 	Ban(ctx context.Context, id int32) error
@@ -119,6 +121,25 @@ func (r *userRepo) UpdateLastLogin(ctx context.Context, id int32) error {
 	now := time.Now().UTC()
 	_, err := r.db.Exec("UPDATE auth_user SET last_login = $1", now)
 	return err
+}
+
+func (r *userRepo) GetMassLogout(ctx context.Context) (*time.Time, error) {
+	s, err := r.cache.Get(ctx, "users:mass_logout").Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	t := time.Unix(int64(v), 0)
+	return &t, nil
 }
 
 func (r *userRepo) ActivateMassLogout(ctx context.Context, refreshTokenExpiration time.Duration) error {
