@@ -13,6 +13,7 @@ import (
 
 type AdminHandler interface {
 	ActivateMassLogout(w http.ResponseWriter, r *http.Request) error
+	DeactivateMassLogout(w http.ResponseWriter, r *http.Request) error
 	Ban(w http.ResponseWriter, r *http.Request) error
 	Unban(w http.ResponseWriter, r *http.Request) error
 	Kick(w http.ResponseWriter, r *http.Request) error
@@ -31,6 +32,15 @@ func NewAdminHandler(adminService service.AdminService) AdminHandler {
 
 func (h *adminHandler) ActivateMassLogout(w http.ResponseWriter, r *http.Request) error {
 	if err := h.adminService.ActivateMassLogout(r.Context()); err != nil {
+		return err
+	}
+
+	render.Status(w, http.StatusOK)
+	return nil
+}
+
+func (h *adminHandler) DeactivateMassLogout(w http.ResponseWriter, r *http.Request) error {
+	if err := h.adminService.DeactivateMassLogout(r.Context()); err != nil {
 		return err
 	}
 
