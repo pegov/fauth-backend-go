@@ -22,6 +22,7 @@ type UserRepo interface {
 	GetByLogin(ctx context.Context, login string) (*entity.User, error)
 	Create(ctx context.Context, data *model.UserCreate) (int32, error)
 	UpdateLastLogin(ctx context.Context, id int32) error
+	ActivateMassLogout(ctx context.Context, refreshTokenExpiration time.Duration) error
 	Ban(ctx context.Context, id int32) error
 	Unban(ctx context.Context, id int32) error
 	Kick(ctx context.Context, id int32) error
@@ -117,6 +118,11 @@ func (r *userRepo) UpdateLastLogin(ctx context.Context, id int32) error {
 	now := time.Now().UTC()
 	_, err := r.db.Exec("UPDATE auth_user SET last_login = $1", now)
 	return err
+}
+
+func (r *userRepo) ActivateMassLogout(ctx context.Context, refreshTokenExpiration time.Duration) error {
+	ts := time.Now().UTC().Unix()
+	return r.cache.Set(ctx, "users:mass_logout", ts, refreshTokenExpiration).Err()
 }
 
 func (r *userRepo) Ban(ctx context.Context, id int32) error {

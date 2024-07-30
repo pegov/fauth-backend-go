@@ -55,6 +55,7 @@ func NewRouter() chi.Router {
 	apiV1Router.Group(func(r chi.Router) {
 		adminService := service.NewAdminService(userRepo)
 		adminHandler := handler.NewAdminHandler(adminService)
+		r.Post("/mass_logout", makeHandler(adminHandler.ActivateMassLogout))
 		r.Post("/{id}/ban", makeHandler(adminHandler.Ban))
 		r.Post("/{id}/unban", makeHandler(adminHandler.Unban))
 		r.Post("/{id}/kick", makeHandler(adminHandler.Kick))
