@@ -28,9 +28,9 @@
 - [ ] oauth_callback
 
 ### Admin
-- [ ] get_mass_logout
-- [ ] activate_mass_logout
-- [ ] deactivate_mass_logout
+- [X] get_mass_logout
+- [X] activate_mass_logout
+- [X] deactivate_mass_logout
 - [X] ban
 - [X] unban
 - [X] kick
