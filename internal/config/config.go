@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -12,19 +13,17 @@ type Config struct {
 func New() Config {
 	cfg := Config{}
 
-	host, ok := os.LookupEnv("HOST")
-	if !ok {
-		panic("Failed to load env: HOST")
-	}
-
-	cfg.Host = host
-
-	port, ok := os.LookupEnv("PORT")
-	if !ok {
-		panic("Failed to load env: HOST")
-	}
-
-	cfg.Port = port
+	cfg.Host = readEnv("HOST")
+	cfg.Port = readEnv("PORT")
 
 	return cfg
+}
+
+func readEnv(name string) string {
+	v, ok := os.LookupEnv(name)
+	if !ok {
+		panic(fmt.Sprintf("Failed to load env: %s", name))
+	}
+
+	return v
 }
