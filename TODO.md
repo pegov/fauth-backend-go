@@ -10,9 +10,9 @@
 - [X] refresh_token
 
 ### TOTP
-- [] setup_2fa (totp)
-- [] remove_2fa (totp)
-- [] update_recovery_codes
+- [ ] setup_2fa (totp)
+- [ ] remove_2fa (totp)
+- [ ] update_recovery_codes
 
 ### Email
 - [ ] request_email_verification
