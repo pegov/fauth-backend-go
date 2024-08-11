@@ -22,7 +22,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	r := api.NewRouter()
+	r := api.NewRouter(&cfg)
 	slog.Info("Starting server...")
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 	http.ListenAndServe(addr, r)
