@@ -10,10 +10,10 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/api/handler"
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
-	"github.com/pegov/fauth-backend-go/internal/db"
 	"github.com/pegov/fauth-backend-go/internal/password"
 	"github.com/pegov/fauth-backend-go/internal/repo"
 	"github.com/pegov/fauth-backend-go/internal/service"
+	"github.com/pegov/fauth-backend-go/internal/storage"
 	"github.com/pegov/fauth-backend-go/internal/token"
 )
 
@@ -25,9 +25,9 @@ func NewRouter(cfg *config.Config) chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(5 * time.Second))
 
-	dbClient := db.GetDB(cfg.DatabaseURL)
-	cacheClient := db.GetCache(cfg.CacheURL)
-	userRepo := repo.NewUserRepo(dbClient, cacheClient)
+	db := storage.GetDB(cfg.DatabaseURL)
+	cache := storage.GetCache(cfg.CacheURL)
+	userRepo := repo.NewUserRepo(db, cache)
 	captchaClient := captcha.NewReCaptchaClient(cfg.RecaptchaSecret)
 	passwordHasher := password.NewBcryptPasswordHasher()
 	privateKey, err := os.ReadFile("./id_ed25519_auth_1.key")
