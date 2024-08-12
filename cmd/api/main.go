@@ -25,5 +25,7 @@ func main() {
 	r := api.NewRouter(&cfg)
 	slog.Info("Starting server...")
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
-	http.ListenAndServe(addr, r)
+	if err := http.ListenAndServe(addr, r); err != nil {
+		slog.Error("ListenAndServe failed", "err", err)
+	}
 }
