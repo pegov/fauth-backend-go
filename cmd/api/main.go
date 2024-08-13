@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/joho/godotenv"
 
 	"github.com/pegov/fauth-backend-go/internal/api"
 	"github.com/pegov/fauth-backend-go/internal/config"
+	"github.com/pegov/fauth-backend-go/internal/logger"
 )
 
 func main() {
@@ -17,15 +17,13 @@ func main() {
 		slog.Error("Failed to load .env file")
 	}
 
-	cfg := config.New()
+	logger := logger.NewSimpleLogger(logger.LevelDebug, true)
+	cfg := config.New(logger)
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
-
-	r := api.NewRouter(&cfg)
-	slog.Info("Starting server...")
+	r := api.NewRouter(&cfg, logger)
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+	logger.Infof("Starting server on %s", addr)
 	if err := http.ListenAndServe(addr, r); err != nil {
-		slog.Error("ListenAndServe failed", "err", err)
+		logger.Criticalf("ListenAndServe failed, err = %s", err)
 	}
 }
