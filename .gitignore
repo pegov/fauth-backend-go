@@ -3,4 +3,5 @@ var/
 *.key
 *.pub
 *.env
+.env.*
 .env
