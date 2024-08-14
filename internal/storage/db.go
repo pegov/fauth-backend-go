@@ -8,27 +8,27 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/pegov/fauth-backend-go/internal/logger"
+	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
-func GetDB(logger logger.Logger, url string) *sqlx.DB {
+func GetDB(logger log.Logger, url string) (*sqlx.DB, error) {
 	logger.Infof("Parsing DB config...")
 	poolCfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logger.Infof("Creating DB pool...")
 	pool, err := pgxpool.NewWithConfig(context.TODO(), poolCfg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logger.Infof("Pinging DB...")
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
 	defer cancel()
 	if err := pool.Ping(ctx); err != nil {
-		panic(err)
+		return nil, err
 	}
 	logger.Infof("DB is online!")
 
@@ -38,5 +38,5 @@ func GetDB(logger logger.Logger, url string) *sqlx.DB {
 	sqldb.SetConnMaxLifetime(time.Minute * 10)
 
 	db := sqlx.NewDb(sqldb, "pgx")
-	return db
+	return db, nil
 }

@@ -6,14 +6,14 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/pegov/fauth-backend-go/internal/logger"
+	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
-func GetCache(logger logger.Logger, url string) *redis.Client {
+func GetCache(logger log.Logger, url string) (*redis.Client, error) {
 	logger.Infof("Parsing CACHE config...")
 	opts, err := redis.ParseURL(url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logger.Infof("Creating CACHE client...")
@@ -23,10 +23,10 @@ func GetCache(logger logger.Logger, url string) *redis.Client {
 	defer cancel()
 	logger.Infof("Pinging CACHE...")
 	if err := client.Ping(ctx).Err(); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logger.Infof("CACHE is online!")
 
-	return client
+	return client, nil
 }

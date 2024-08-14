@@ -10,15 +10,14 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/api/handler"
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
-	"github.com/pegov/fauth-backend-go/internal/logger"
+	"github.com/pegov/fauth-backend-go/internal/log"
 	"github.com/pegov/fauth-backend-go/internal/password"
 	"github.com/pegov/fauth-backend-go/internal/repo"
 	"github.com/pegov/fauth-backend-go/internal/service"
-	"github.com/pegov/fauth-backend-go/internal/storage"
 	"github.com/pegov/fauth-backend-go/internal/token"
 )
 
-func NewRouter(cfg *config.Config, logger logger.Logger) chi.Router {
+func NewRouter(cfg *config.Config, logger log.Logger, userRepo repo.UserRepo) (chi.Router, error) {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -26,18 +25,15 @@ func NewRouter(cfg *config.Config, logger logger.Logger) chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(5 * time.Second))
 
-	db := storage.GetDB(logger, cfg.DatabaseURL)
-	cache := storage.GetCache(logger, cfg.CacheURL)
-	userRepo := repo.NewUserRepo(db, cache)
 	captchaClient := captcha.NewReCaptchaClient(cfg.RecaptchaSecret)
 	passwordHasher := password.NewBcryptPasswordHasher()
 	privateKey, err := os.ReadFile("./id_ed25519_auth_1.key")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	publicKey, err := os.ReadFile("./id_ed25519_auth_1.pub")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	tokenBackend := token.NewJwtBackend(privateKey, publicKey, "1")
 
@@ -68,5 +64,5 @@ func NewRouter(cfg *config.Config, logger logger.Logger) chi.Router {
 
 	r.Mount("/api/v1/users", apiV1Router)
 
-	return r
+	return r, nil
 }
