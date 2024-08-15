@@ -72,7 +72,7 @@ func (l *SeparateFilesLogger) log(level Level, ansiCode string, levelName string
 }
 
 func (l *SeparateFilesLogger) Tracef(format string, args ...any) {
-	l.log(LevelDebug, ansiBlue, LevelHeaderTrace, 0, format, args...)
+	l.log(LevelTrace, ansiBlue, LevelHeaderTrace, 0, format, args...)
 }
 
 func (l *SeparateFilesLogger) Debugf(format string, args ...any) {

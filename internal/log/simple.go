@@ -43,7 +43,7 @@ func (l *SimpleLogger) log(level Level, ansiCode string, levelName string, paddi
 }
 
 func (l *SimpleLogger) Tracef(format string, args ...any) {
-	l.log(LevelDebug, ansiBlue, LevelHeaderTrace, 0, format, args...)
+	l.log(LevelTrace, ansiBlue, LevelHeaderTrace, 0, format, args...)
 }
 
 func (l *SimpleLogger) Debugf(format string, args ...any) {
