@@ -9,7 +9,7 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
-func GetCache(logger log.Logger, url string) (*redis.Client, error) {
+func GetCache(ctx context.Context, logger log.Logger, url string) (*redis.Client, error) {
 	logger.Infof("Parsing CACHE config...")
 	opts, err := redis.ParseURL(url)
 	if err != nil {
@@ -19,7 +19,7 @@ func GetCache(logger log.Logger, url string) (*redis.Client, error) {
 	logger.Infof("Creating CACHE client...")
 	client := redis.NewClient(opts)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	logger.Infof("Pinging CACHE...")
 	if err := client.Ping(ctx).Err(); err != nil {

@@ -18,7 +18,7 @@ func (e *BindJSONError) Error() string {
 	return e.Message
 }
 
-func JSON(r *http.Request, model any) error {
+func JSON[T any](r *http.Request, model T) error {
 	ct := r.Header.Get("Content-Type")
 	if ct != "" {
 		mediaType := strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))

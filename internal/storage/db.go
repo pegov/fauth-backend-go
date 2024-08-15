@@ -11,7 +11,14 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
-func GetDB(logger log.Logger, url string) (*sqlx.DB, error) {
+func GetDB(
+	ctx context.Context,
+	logger log.Logger,
+	url string,
+	maxIdleConns int,
+	maxOpenConns int,
+	connMaxLifetime time.Duration,
+) (*sqlx.DB, error) {
 	logger.Infof("Parsing DB config...")
 	poolCfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
@@ -19,13 +26,13 @@ func GetDB(logger log.Logger, url string) (*sqlx.DB, error) {
 	}
 
 	logger.Infof("Creating DB pool...")
-	pool, err := pgxpool.NewWithConfig(context.TODO(), poolCfg)
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Infof("Pinging DB...")
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 	if err := pool.Ping(ctx); err != nil {
 		return nil, err
@@ -33,9 +40,9 @@ func GetDB(logger log.Logger, url string) (*sqlx.DB, error) {
 	logger.Infof("DB is online!")
 
 	sqldb := stdlib.OpenDBFromPool(pool)
-	sqldb.SetMaxIdleConns(4)
-	sqldb.SetMaxOpenConns(8)
-	sqldb.SetConnMaxLifetime(time.Minute * 10)
+	sqldb.SetMaxIdleConns(maxIdleConns)
+	sqldb.SetMaxOpenConns(maxOpenConns)
+	sqldb.SetConnMaxLifetime(connMaxLifetime)
 
 	db := sqlx.NewDb(sqldb, "pgx")
 	return db, nil

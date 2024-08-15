@@ -46,6 +46,11 @@ var (
 	ErrEmailWrong            = errors.New("email wrong")
 )
 
+var (
+	maxUserPartLen = 64
+	maxDomainPart  = 255
+)
+
 func validateEmail(email string) (string, error) {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -61,7 +66,7 @@ func validateEmail(email string) (string, error) {
 	userPart := parts[0]
 	domainPart := parts[1]
 
-	if len(userPart) > 64 || len(domainPart) > 255 {
+	if len(userPart) > maxUserPartLen || len(domainPart) > maxDomainPart {
 		return "", ErrEmailLength
 	}
 

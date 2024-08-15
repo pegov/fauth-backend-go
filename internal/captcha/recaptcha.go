@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
 type ReCaptchaClient struct {
+	logger log.Logger
 	secret string
 }
 
-func NewReCaptchaClient(secret string) CaptchaClient {
+func NewReCaptchaClient(secret string) *ReCaptchaClient {
 	return &ReCaptchaClient{
 		secret: secret,
 	}
@@ -28,7 +31,7 @@ type response struct {
 func (c *ReCaptchaClient) IsValid(captcha string) bool {
 	res, err := sendReCaptchaRequest(c.secret, captcha)
 	if err != nil {
-		// TODO: log
+		c.logger.Errorf("Failed to send recaptcha request: %s", err)
 		return false
 	}
 

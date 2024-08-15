@@ -2,9 +2,9 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
+	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/http/bind"
 	"github.com/pegov/fauth-backend-go/internal/http/render"
 	"github.com/pegov/fauth-backend-go/internal/model"
@@ -21,6 +21,7 @@ type AuthHandler interface {
 }
 
 type authHandler struct {
+	cfg         *config.Config
 	authService service.AuthService
 }
 
@@ -34,6 +35,38 @@ var (
 	ErrInvalidPathParamType = errors.New("invalid path param type")
 )
 
+func (h *authHandler) setAccessCookie(
+	w http.ResponseWriter,
+	accessToken string,
+) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     h.cfg.AccessTokenCookieName,
+		Value:    accessToken,
+		Path:     "/",
+		Domain:   h.cfg.HttpDomain,
+		MaxAge:   h.cfg.AcessTokenExpiration,
+		Secure:   h.cfg.HttpSecure,
+		HttpOnly: true,
+	})
+}
+
+func (h *authHandler) setCookies(
+	w http.ResponseWriter,
+	accessToken,
+	refreshToken string,
+) {
+	h.setAccessCookie(w, accessToken)
+	http.SetCookie(w, &http.Cookie{
+		Name:     h.cfg.RefreshTokenCookieName,
+		Value:    refreshToken,
+		Path:     "/",
+		Domain:   h.cfg.HttpDomain,
+		MaxAge:   h.cfg.RefreshTokenExpiration,
+		Secure:   h.cfg.HttpSecure,
+		HttpOnly: true,
+	})
+}
+
 func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	var request *model.RegisterRequest
 	if err := bind.JSON(r, &request); err != nil {
@@ -45,25 +78,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_c",
-		Value:    accessToken,
-		Path:     "/",
-		Domain:   "localhost",
-		MaxAge:   60 * 60 * 6,
-		Secure:   false, // TODO
-		HttpOnly: true,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_c",
-		Value:    refreshToken,
-		Path:     "/",
-		Domain:   "localhost",
-		MaxAge:   60 * 60 * 24 * 31,
-		Secure:   false, // TODO
-		HttpOnly: true,
-	})
-
+	h.setCookies(w, accessToken, refreshToken)
 	return nil
 }
 
@@ -78,35 +93,16 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_c",
-		Value:    accessToken,
-		Path:     "/",
-		Domain:   "localhost",
-		MaxAge:   60 * 60 * 6,
-		Secure:   false, // TODO
-		HttpOnly: true,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_c",
-		Value:    refreshToken,
-		Path:     "/",
-		Domain:   "localhost",
-		MaxAge:   60 * 60 * 24 * 31,
-		Secure:   false, // TODO
-		HttpOnly: true,
-	})
-
+	h.setCookies(w, accessToken, refreshToken)
 	return nil
 }
 
 var (
 	ErrNoTokenCookie = errors.New("no token cookie error")
-	ErrRenderJSON    = errors.New("render json error")
 )
 
 func (h *authHandler) Token(w http.ResponseWriter, r *http.Request) error {
-	v, err := r.Cookie("access_c")
+	v, err := r.Cookie(h.cfg.AccessTokenCookieName)
 	if err != nil {
 		return ErrNoTokenCookie
 	}
@@ -116,11 +112,7 @@ func (h *authHandler) Token(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	if err := render.JSON(w, http.StatusOK, user); err != nil {
-		return fmt.Errorf("%w: %w", ErrRenderJSON, err)
-	}
-
-	return nil
+	return render.JSON(w, http.StatusOK, user)
 }
 
 func (h *authHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
@@ -134,43 +126,34 @@ func (h *authHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_c",
-		Value:    accessToken,
-		Path:     "/",
-		Domain:   "localhost",
-		MaxAge:   60 * 60 * 6,
-		Secure:   false, // TODO
-		HttpOnly: true,
-	})
-
+	h.setAccessCookie(w, accessToken)
 	return nil
 }
 
 func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "access_c",
+		Name:     h.cfg.AccessTokenCookieName,
 		Value:    "",
 		Path:     "/",
-		Domain:   "localhost",
+		Domain:   h.cfg.HttpDomain,
 		MaxAge:   -1,
-		Secure:   false, // TODO
+		Secure:   h.cfg.HttpSecure,
 		HttpOnly: true,
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_c",
+		Name:     h.cfg.RefreshTokenCookieName,
 		Value:    "",
 		Path:     "/",
-		Domain:   "localhost",
+		Domain:   h.cfg.HttpDomain,
 		MaxAge:   -1,
-		Secure:   false, // TODO
+		Secure:   h.cfg.HttpSecure,
 		HttpOnly: true,
 	})
 	return nil
 }
 
 func (h *authHandler) Me(w http.ResponseWriter, r *http.Request) error {
-	v, err := r.Cookie("access_c")
+	v, err := r.Cookie(h.cfg.AccessTokenCookieName)
 	if err != nil {
 		return ErrNoTokenCookie
 	}
@@ -185,6 +168,5 @@ func (h *authHandler) Me(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	render.JSON(w, http.StatusOK, me)
-	return nil
+	return render.JSON(w, http.StatusOK, me)
 }
