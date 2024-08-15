@@ -32,11 +32,11 @@ func Run(
 	signals <-chan os.Signal,
 ) error {
 	var (
-		host                                  string
-		port                                  int
-		debug, debugPasswordHasher, verbose   bool
-		accessLog, errorLog                   string
-		privateKeyPath, publicKeyPath, jwtKID string
+		host                                       string
+		port                                       int
+		debug, debugPasswordHasher, verbose, trace bool
+		accessLog, errorLog                        string
+		privateKeyPath, publicKeyPath, jwtKID      string
 	)
 
 	flagSet := flag.NewFlagSet("", flag.ExitOnError)
@@ -50,6 +50,7 @@ func Run(
 		"turn on debug password hasher",
 	)
 	flagSet.BoolVar(&verbose, "verbose", true, "log level = DEBUG")
+	flagSet.BoolVar(&trace, "trace", false, "log level = TRACE")
 
 	flagSet.StringVar(&accessLog, "access-log", "", "path to access log file")
 	flagSet.StringVar(&errorLog, "error-log", "", "path to error log file")
@@ -78,7 +79,9 @@ func Run(
 	}
 
 	var logLevel log.Level
-	if verbose {
+	if trace {
+		logLevel = log.LevelTrace
+	} else if verbose {
 		logLevel = log.LevelDebug
 	} else {
 		logLevel = log.LevelInfo
@@ -95,6 +98,10 @@ func Run(
 				return fmt.Errorf("failed to setup separate logger: %w", err)
 			}
 		}
+	}
+
+	if trace {
+		logger.Warnf("trace flag is ON")
 	}
 
 	if verbose {

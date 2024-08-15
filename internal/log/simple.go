@@ -42,6 +42,10 @@ func (l *SimpleLogger) log(level Level, ansiCode string, levelName string, paddi
 	}
 }
 
+func (l *SimpleLogger) Tracef(format string, args ...any) {
+	l.log(LevelDebug, ansiBlue, LevelHeaderTrace, 0, format, args...)
+}
+
 func (l *SimpleLogger) Debugf(format string, args ...any) {
 	l.log(LevelDebug, ansiGrey, LevelHeaderDebug, 0, format, args...)
 }
@@ -59,7 +63,7 @@ func (l *SimpleLogger) Errorf(format string, args ...any) {
 }
 
 func (l *SimpleLogger) Criticalf(format string, args ...any) {
-	l.log(LevelCritical, ansiOrange, LevelHeaderCritical, 1, format, args...)
+	l.log(LevelCritical, ansiMagenta, LevelHeaderCritical, 1, format, args...)
 	os.Exit(1)
 }
 

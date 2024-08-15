@@ -71,6 +71,10 @@ func (l *SeparateFilesLogger) log(level Level, ansiCode string, levelName string
 	}
 }
 
+func (l *SeparateFilesLogger) Tracef(format string, args ...any) {
+	l.log(LevelDebug, ansiBlue, LevelHeaderTrace, 0, format, args...)
+}
+
 func (l *SeparateFilesLogger) Debugf(format string, args ...any) {
 	l.log(LevelDebug, ansiGrey, LevelHeaderDebug, 0, format, args...)
 }
@@ -88,7 +92,7 @@ func (l *SeparateFilesLogger) Errorf(format string, args ...any) {
 }
 
 func (l *SeparateFilesLogger) Criticalf(format string, args ...any) {
-	l.log(LevelCritical, ansiOrange, LevelHeaderCritical, 1, format, args...)
+	l.log(LevelCritical, ansiMagenta, LevelHeaderCritical, 1, format, args...)
 	os.Exit(1)
 }
 

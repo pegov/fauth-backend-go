@@ -1,18 +1,20 @@
 package log
 
 const (
-	ansiReset  = "\033[0m"
-	ansiGrey   = "\033[2m"
-	ansiRed    = "\033[91m"
-	ansiGreen  = "\033[92m"
-	ansiYellow = "\033[93m"
-	ansiOrange = "\033[95m"
+	ansiReset   = "\033[0m"
+	ansiGrey    = "\033[2m"
+	ansiRed     = "\033[31m"
+	ansiGreen   = "\033[32m"
+	ansiYellow  = "\033[33m"
+	ansiBlue    = "\033[34m"
+	ansiMagenta = "\033[35m"
 )
 
 type Level int
 
 const (
-	LevelDebug Level = iota
+	LevelTrace Level = iota
+	LevelDebug
 	LevelInfo
 	LevelWarn
 	LevelError
@@ -21,6 +23,7 @@ const (
 )
 
 const (
+	LevelHeaderTrace    = "TRACE"
 	LevelHeaderDebug    = "DEBUG"
 	LevelHeaderInfo     = "INFO"
 	LevelHeaderWarn     = "WARN"
@@ -29,6 +32,7 @@ const (
 )
 
 type Logger interface {
+	Tracef(format string, args ...any)
 	Debugf(format string, args ...any)
 	Infof(format string, args ...any)
 	Warnf(format string, args ...any)
