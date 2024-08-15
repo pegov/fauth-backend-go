@@ -1,7 +1,11 @@
 build/
 var/
+tmp/
 *.key
 *.pub
 *.env
 .env.*
 .env
+go.work
+go.work.sum
+.air.toml

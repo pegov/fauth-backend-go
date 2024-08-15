@@ -13,18 +13,24 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/service"
 )
 
-func NewRouter(
+func NewServer(
 	cfg *config.Config,
 	logger log.Logger,
 	authService service.AuthService,
 	adminService service.AdminService,
-) (chi.Router, error) {
+) http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
+	// r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(20 * time.Second))
+
+	pingRouter := chi.NewRouter()
+	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("pong"))
+	})
+	r.Mount("/", pingRouter)
 
 	apiV1Router := chi.NewRouter()
 
@@ -33,7 +39,7 @@ func NewRouter(
 	}
 
 	apiV1Router.Group(func(r chi.Router) {
-		authHandler := handler.NewAuthHandler(authService)
+		authHandler := handler.NewAuthHandler(cfg, authService)
 		r.Post("/register", localMakeHandler(authHandler.Register))
 		r.Post("/login", localMakeHandler(authHandler.Login))
 		r.Post("/logout", localMakeHandler(authHandler.Logout))
@@ -55,5 +61,5 @@ func NewRouter(
 
 	r.Mount("/api/v1/users", apiV1Router)
 
-	return r, nil
+	return r
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/pegov/fauth-backend-go/internal/captcha"
@@ -51,9 +52,18 @@ var (
 	ErrInvalidCaptcha            = errors.New("invalid captcha")
 )
 
+// TODO: import
+type ValidationError struct {
+	Inner error
+}
+
+func (err *ValidationError) Error() string {
+	return err.Inner.Error()
+}
+
 func (s *authService) Register(ctx context.Context, request *model.RegisterRequest) (string, string, error) {
 	if err := request.Validate(); err != nil {
-		return "", "", err
+		return "", "", &ValidationError{Inner: err}
 	}
 
 	if !s.captchaClient.IsValid(request.Captcha) {
@@ -62,7 +72,7 @@ func (s *authService) Register(ctx context.Context, request *model.RegisterReque
 
 	user, err := s.userRepo.GetByEmail(ctx, request.Email)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to get user by email: %w", err)
 	}
 
 	if user != nil {
@@ -71,7 +81,7 @@ func (s *authService) Register(ctx context.Context, request *model.RegisterReque
 
 	user, err = s.userRepo.GetByUsername(ctx, request.Username)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to get user by username: %w", err)
 	}
 
 	if user != nil {
@@ -92,13 +102,13 @@ func (s *authService) Register(ctx context.Context, request *model.RegisterReque
 
 	id, err := s.userRepo.Create(ctx, &userCreate)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to create user: %w", err)
 	}
 
 	// user != nil
 	user, err = s.userRepo.Get(ctx, id)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to get user by id: %w", err)
 	}
 
 	payload := token.User{

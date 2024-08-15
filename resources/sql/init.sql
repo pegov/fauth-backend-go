@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS auth_user(
 	password TEXT,
 	active BOOLEAN DEFAULT TRUE,
 	verified BOOLEAN DEFAULT FALSE,
-	date_added TIMESTAMP WITH TIME ZONE,
-	date_added TIMESTAMP WITH TIME ZONE
+	created_at TIMESTAMP WITH TIME ZONE,
+	last_login TIMESTAMP WITH TIME ZONE
 );
 CREATE INDEX IF NOT EXISTS auth_user_username_idx ON auth_user(username);
 CREATE INDEX IF NOT EXISTS auth_user_email_idx ON auth_user(email);

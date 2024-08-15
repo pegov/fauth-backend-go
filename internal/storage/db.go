@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -32,7 +34,7 @@ func GetDB(
 	}
 
 	logger.Infof("Pinging DB...")
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 	if err := pool.Ping(ctx); err != nil {
 		return nil, err
@@ -45,5 +47,16 @@ func GetDB(
 	sqldb.SetConnMaxLifetime(connMaxLifetime)
 
 	db := sqlx.NewDb(sqldb, "pgx")
+
+	sqlInit, err := os.ReadFile("./resources/sql/init.sql")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read init.sql file: %w", err)
+	}
+
+	_, err = db.ExecContext(ctx, string(sqlInit))
+	if err != nil {
+		return nil, fmt.Errorf("failed to exec init.sql: %w", err)
+	}
+
 	return db, nil
 }

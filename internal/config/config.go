@@ -3,22 +3,18 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
 type Config struct {
-	Host                    string `env:"HOST"`
-	Port                    string `env:"PORT"`
 	DatabaseURL             string `env:"DATABASE_URL"`
 	DatabaseMaxIdleConns    int    `env:"DATABASE_MAX_IDLE_CONNS"`
 	DatabaseMaxOpenConns    int    `env:"DATABASE_MAX_OPEN_CONNS"`
 	DatabaseConnMaxLifetime int    `env:"DATABASE_CONN_MAX_LIFETIME"`
 	CacheURL                string `env:"CACHE_URL"`
 	RecaptchaSecret         string `env:"RECAPTCHA_SECRET"`
-	Debug                   bool   `env:"DEBUG"`
 	HttpDomain              string `env:"HTTP_DOMAIN"`
 	HttpSecure              bool   `env:"HTTP_SECURE"`
 	LoginRatelimit          int    `env:"LOGIN_RATELIMIT"`
@@ -28,7 +24,7 @@ type Config struct {
 	RefreshTokenExpiration  int    `env:"REFRESH_TOKEN_EXPIRATION"`
 }
 
-func New() (*Config, error) {
+func New(getenv func(string) string) (*Config, error) {
 	cfg := Config{}
 	var missingEnvs []string
 	var wrongEnvs []string
@@ -41,14 +37,14 @@ func New() (*Config, error) {
 		value := reflect.ValueOf(cfg).FieldByName(f.Name).Interface()
 		switch value.(type) {
 		case string:
-			v, ok := readString(name)
+			v, ok := readString(getenv, name)
 			if ok {
 				reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(v))
 			} else {
 				missingEnvs = append(missingEnvs, name)
 			}
 		case bool:
-			v, ok := readString(name)
+			v, ok := readString(getenv, name)
 			if ok {
 				v := v == "1" || v == "True" || v == "TRUE" || v == "true" || v == "yes"
 				reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(v))
@@ -56,7 +52,7 @@ func New() (*Config, error) {
 				missingEnvs = append(missingEnvs, name)
 			}
 		case int:
-			v, ok := readString(name)
+			v, ok := readString(getenv, name)
 			if ok {
 				if n, err := strconv.Atoi(v); err == nil {
 					reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(n))
@@ -91,9 +87,9 @@ func (cfg *Config) Pretty() []byte {
 	return prettyCfg
 }
 
-func readString(name string) (string, bool) {
-	v, ok := os.LookupEnv(name)
-	if !ok || v == "" {
+func readString(getenv func(string) string, name string) (string, bool) {
+	v := getenv(name)
+	if v == "" {
 		return "", false
 	}
 

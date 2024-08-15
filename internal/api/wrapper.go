@@ -14,6 +14,7 @@ type HandlerFuncWithError = func(w http.ResponseWriter, r *http.Request) error
 
 func makeHandler(fn HandlerFuncWithError, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var validationError *service.ValidationError
 		if err := fn(w, r); err != nil {
 			switch {
 			case errors.Is(err, handler.ErrInvalidPathParamType):
@@ -24,8 +25,9 @@ func makeHandler(fn HandlerFuncWithError, logger log.Logger) http.HandlerFunc {
 				render.String(w, http.StatusBadRequest, err.Error())
 			case errors.Is(err, service.ErrUserAlreadyExistsEmail),
 				errors.Is(err, service.ErrUserAlreadyExistsUsername),
-				errors.Is(err, service.ErrUserPasswordNotSet):
-				render.String(w, http.StatusBadRequest, err.Error())
+				errors.Is(err, service.ErrUserPasswordNotSet),
+				errors.As(err, &validationError):
+				render.JSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
 			case errors.Is(err, service.ErrUserNotActive),
 				errors.Is(err, service.ErrPasswordVerification),
 				errors.Is(err, handler.ErrNoTokenCookie):

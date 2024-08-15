@@ -108,9 +108,10 @@ func validateUsername(username string) (string, error) {
 				break
 			}
 
-			if !ok {
-				return "", ErrUsernameForbiddenChar
-			}
+		}
+
+		if !ok {
+			return "", ErrUsernameForbiddenChar
 		}
 	}
 
@@ -131,7 +132,7 @@ var (
 
 var (
 	// TODO
-	passwordAllowedChars = "abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ"
+	passwordAllowedChars = "abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ123456 "
 )
 
 const (
@@ -149,16 +150,16 @@ func validatePassword(password1 string, password2 string) error {
 	}
 
 	for _, passwordChar := range password1 {
+		ok := false
 		for _, allowedChar := range passwordAllowedChars {
-			ok := false
 			if passwordChar == allowedChar {
 				ok = true
 				break
 			}
+		}
 
-			if !ok {
-				return ErrPasswordForbiddenChar
-			}
+		if !ok {
+			return ErrPasswordForbiddenChar
 		}
 	}
 
