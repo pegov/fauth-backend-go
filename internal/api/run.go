@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/log"
@@ -24,19 +26,18 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/token"
 )
 
-func Run(
+func Prepare(
 	ctx context.Context,
 	args []string,
 	getenv func(string) string,
 	stdout, stderr io.Writer,
-	signals <-chan os.Signal,
-) error {
+) (*http.Server, log.Logger, error) {
 	var (
-		host                                       string
-		port                                       int
-		debug, debugPasswordHasher, verbose, trace bool
-		accessLog, errorLog                        string
-		privateKeyPath, publicKeyPath, jwtKID      string
+		host                                             string
+		port                                             int
+		debug, debugPasswordHasher, verbose, trace, test bool
+		accessLog, errorLog                              string
+		privateKeyPath, publicKeyPath, jwtKID            string
 	)
 
 	flagSet := flag.NewFlagSet("", flag.ExitOnError)
@@ -51,6 +52,7 @@ func Run(
 	)
 	flagSet.BoolVar(&verbose, "verbose", true, "log level = DEBUG")
 	flagSet.BoolVar(&trace, "trace", false, "log level = TRACE")
+	flagSet.BoolVar(&test, "test", false, "for testing (sqlite, cache in memory)")
 
 	flagSet.StringVar(&accessLog, "access-log", "", "path to access log file")
 	flagSet.StringVar(&errorLog, "error-log", "", "path to error log file")
@@ -75,7 +77,7 @@ func Run(
 	)
 
 	if err := flagSet.Parse(args); err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse args: %w", err)
 	}
 
 	var logLevel log.Level
@@ -95,7 +97,7 @@ func Run(
 			var err error
 			logger, err = log.NewSeparateLogger(accessLog, errorLog, true)
 			if err != nil {
-				return fmt.Errorf("failed to setup separate logger: %w", err)
+				return nil, nil, fmt.Errorf("failed to setup separate logger: %w", err)
 			}
 		}
 	}
@@ -119,36 +121,52 @@ func Run(
 	cfg, err := config.New(getenv)
 	if err != nil {
 		logger.Errorf("Failed to read config")
-		return err
+		return nil, nil, err
 	}
 
-	logger.Debugf("DB URL: %s", cfg.DatabaseURL)
-	logger.Debugf("CACHE URL: %s", cfg.CacheURL)
-
-	db, err := storage.GetDB(
-		ctx,
-		logger,
-		cfg.DatabaseURL,
-		cfg.DatabaseMaxIdleConns,
-		cfg.DatabaseMaxOpenConns,
-		time.Duration(cfg.DatabaseConnMaxLifetime)*time.Second,
+	var (
+		db    *sqlx.DB
+		cache storage.CacheOps
 	)
-	if err != nil {
-		logger.Errorf("Failed to connect to db: %s", cfg.DatabaseURL)
-		return err
-	}
-	defer db.Close()
+	if test {
+		db, err := storage.GetInMemoryDB(ctx, logger, ":memory:")
+		if err != nil {
+			logger.Errorf("Failed to connect to db: %s", cfg.DatabaseURL)
+			return nil, nil, err
+		}
+		defer db.Close()
 
-	cache, err := storage.GetCache(
-		ctx,
-		logger,
-		cfg.CacheURL,
-	)
-	if err != nil {
-		logger.Errorf("Failed to connect to cache: %s", cfg.CacheURL)
-		return err
+		cache = storage.NewMemoryCache()
+	} else {
+		logger.Debugf("DB URL: %s", cfg.DatabaseURL)
+		logger.Debugf("CACHE URL: %s", cfg.CacheURL)
+
+		db, err = storage.GetDB(
+			ctx,
+			logger,
+			cfg.DatabaseURL,
+			cfg.DatabaseMaxIdleConns,
+			cfg.DatabaseMaxOpenConns,
+			time.Duration(cfg.DatabaseConnMaxLifetime)*time.Second,
+		)
+		if err != nil {
+			logger.Errorf("Failed to connect to db: %s", cfg.DatabaseURL)
+			return nil, nil, err
+		}
+		defer db.Close()
+
+		cacheClient, err := storage.GetCache(
+			ctx,
+			logger,
+			cfg.CacheURL,
+		)
+		if err != nil {
+			logger.Errorf("Failed to connect to cache: %s", cfg.CacheURL)
+			return nil, nil, err
+		}
+		defer cacheClient.Close()
+		cache = storage.NewRedisCacheWrapper(cacheClient)
 	}
-	defer cache.Close()
 
 	userRepo := repo.NewUserRepo(db, cache)
 
@@ -166,20 +184,32 @@ func Run(
 		passwordHasher = password.NewBcryptPasswordHasher()
 	}
 
-	privateKey, err := os.ReadFile(privateKeyPath)
-	if err != nil {
-		logger.Errorf("Failed to read private key path: %s", privateKeyPath)
-		return err
-	}
-	publicKey, err := os.ReadFile(publicKeyPath)
-	if err != nil {
-		logger.Errorf("Failed to read public key path: %s", publicKeyPath)
-		return err
-	}
-	jwtKID = strings.TrimSpace(jwtKID)
-	if jwtKID == "" {
-		logger.Errorf("jwt kid is empty!")
-		return errors.New("jwt kid is empty")
+	var (
+		privateKey, publicKey []byte
+	)
+	if test {
+		generateKeys := func(seed []byte) ([]byte, []byte) {
+			private := ed25519.NewKeyFromSeed(seed)
+			return []byte(private), private.Public().([]byte)
+		}
+		privateKey, publicKey = generateKeys([]byte(strings.Repeat("a", 32)))
+		jwtKID = "1"
+	} else {
+		privateKey, err = os.ReadFile(privateKeyPath)
+		if err != nil {
+			logger.Errorf("Failed to read private key path: %s", privateKeyPath)
+			return nil, nil, err
+		}
+		publicKey, err = os.ReadFile(publicKeyPath)
+		if err != nil {
+			logger.Errorf("Failed to read public key path: %s", publicKeyPath)
+			return nil, nil, err
+		}
+		jwtKID = strings.TrimSpace(jwtKID)
+		if jwtKID == "" {
+			logger.Errorf("jwt kid is empty!")
+			return nil, nil, errors.New("jwt kid is empty")
+		}
 	}
 	tokenBackend := token.NewJwtBackend(privateKey, publicKey, jwtKID)
 
@@ -203,7 +233,16 @@ func Run(
 		Handler: srv,
 	}
 
-	logger.Infof("Starting http server at %s", addr)
+	return &httpServer, logger, nil
+}
+
+func Run(
+	ctx context.Context,
+	logger log.Logger,
+	signals <-chan os.Signal,
+	httpServer *http.Server,
+) error {
+	logger.Infof("Starting http server at %s", httpServer.Addr)
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Errorf("Server failed to listen and serve: %s", err)

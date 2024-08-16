@@ -14,6 +14,7 @@ import (
 
 	"github.com/pegov/fauth-backend-go/internal/entity"
 	"github.com/pegov/fauth-backend-go/internal/model"
+	"github.com/pegov/fauth-backend-go/internal/storage"
 )
 
 type UserRepo interface {
@@ -36,10 +37,10 @@ type UserRepo interface {
 
 type userRepo struct {
 	db    *sqlx.DB
-	cache *redis.Client
+	cache storage.CacheOps
 }
 
-func NewUserRepo(db *sqlx.DB, cache *redis.Client) UserRepo {
+func NewUserRepo(db *sqlx.DB, cache storage.CacheOps) UserRepo {
 	return &userRepo{db: db, cache: cache}
 }
 
