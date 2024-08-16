@@ -182,7 +182,7 @@ func Prepare(
 			private := ed25519.NewKeyFromSeed(seed)
 			return []byte(private), private.Public().([]byte)
 		}
-		privateKey, publicKey = generateKeys([]byte(strings.Repeat("a", 32)))
+		privateKey, publicKey = generateKeys([]byte(strings.Repeat("a", ed25519.SeedSize)))
 		jwtKID = "1"
 	} else {
 		privateKey, err = os.ReadFile(privateKeyPath)
