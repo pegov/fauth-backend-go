@@ -33,23 +33,17 @@ func Prepare(
 	stdout, stderr io.Writer,
 ) (*http.Server, log.Logger, error) {
 	var (
-		host                                             string
-		port                                             int
-		debug, debugPasswordHasher, verbose, trace, test bool
-		accessLog, errorLog                              string
-		privateKeyPath, publicKeyPath, jwtKID            string
+		host                                  string
+		port                                  int
+		debug, verbose, trace, test           bool
+		accessLog, errorLog                   string
+		privateKeyPath, publicKeyPath, jwtKID string
 	)
 
 	flagSet := flag.NewFlagSet("", flag.ExitOnError)
 	flagSet.StringVar(&host, "host", "127.0.0.1", "http server host")
 	flagSet.IntVar(&port, "port", 15500, "http server port")
 	flagSet.BoolVar(&debug, "debug", true, "turn on debug captcha, mail")
-	flagSet.BoolVar(
-		&debugPasswordHasher,
-		"debug-password-hasher",
-		false,
-		"turn on debug password hasher",
-	)
 	flagSet.BoolVar(&verbose, "verbose", true, "log level = DEBUG")
 	flagSet.BoolVar(&trace, "trace", false, "log level = TRACE")
 	flagSet.BoolVar(&test, "test", false, "for testing (sqlite, cache in memory)")
@@ -114,10 +108,6 @@ func Prepare(
 		logger.Warnf("debug flag is ON")
 	}
 
-	if debugPasswordHasher {
-		logger.Warnf("debug-password-hasher flag is ON")
-	}
-
 	cfg, err := config.New(getenv)
 	if err != nil {
 		logger.Errorf("Failed to read config")
@@ -178,7 +168,7 @@ func Prepare(
 	}
 
 	var passwordHasher password.PasswordHasher
-	if debugPasswordHasher {
+	if test {
 		passwordHasher = password.NewPlainTextPasswordHasher()
 	} else {
 		passwordHasher = password.NewBcryptPasswordHasher()
