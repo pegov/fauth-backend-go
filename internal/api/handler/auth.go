@@ -117,7 +117,7 @@ func (h *authHandler) Token(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *authHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
-	v, err := r.Cookie("refresh_c")
+	v, err := r.Cookie(h.cfg.RefreshTokenCookieName)
 	if err != nil {
 		return ErrNoTokenCookie
 	}
