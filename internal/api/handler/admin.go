@@ -40,8 +40,8 @@ func (h *adminHandler) GetMassLogout(w http.ResponseWriter, r *http.Request) err
 	return render.JSON(w, http.StatusOK, status)
 }
 
-func (h *adminHandler) ActivateMassLogout(w http.ResponseWriter, r *http.Request) error {
-	if err := h.adminService.ActivateMassLogout(r.Context()); err != nil {
+func actionOnAll(w http.ResponseWriter, r *http.Request, action func(context.Context) error) error {
+	if err := action(r.Context()); err != nil {
 		return err
 	}
 
@@ -49,13 +49,12 @@ func (h *adminHandler) ActivateMassLogout(w http.ResponseWriter, r *http.Request
 	return nil
 }
 
-func (h *adminHandler) DeactivateMassLogout(w http.ResponseWriter, r *http.Request) error {
-	if err := h.adminService.DeactivateMassLogout(r.Context()); err != nil {
-		return err
-	}
+func (h *adminHandler) ActivateMassLogout(w http.ResponseWriter, r *http.Request) error {
+	return actionOnAll(w, r, h.adminService.ActivateMassLogout)
+}
 
-	render.Status(w, http.StatusOK)
-	return nil
+func (h *adminHandler) DeactivateMassLogout(w http.ResponseWriter, r *http.Request) error {
+	return actionOnAll(w, r, h.adminService.DeactivateMassLogout)
 }
 
 func actionOnID(w http.ResponseWriter, r *http.Request, action func(context.Context, int32) error) error {
