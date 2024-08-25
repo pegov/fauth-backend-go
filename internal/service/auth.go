@@ -90,7 +90,7 @@ func (s *authService) Register(ctx context.Context, request *model.RegisterReque
 
 	passwordHash, err := s.passwordHasher.Hash([]byte(request.Password1))
 	if err != nil {
-		panic(err) // if password > 72 bytes (per bcrypt docs)
+		return "", "", fmt.Errorf("unexpected err: %w", err) // if password > 72 bytes (per bcrypt docs)
 	}
 
 	userCreate := model.UserCreate{
