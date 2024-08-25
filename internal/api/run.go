@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/log"
@@ -119,7 +120,7 @@ func Prepare(
 		cache storage.CacheOps
 	)
 	if test {
-		db, err := storage.GetInMemoryDB(ctx, logger, ":memory:")
+		db, err = storage.GetInMemoryDB(ctx, logger, ":memory:")
 		if err != nil {
 			logger.Errorf("Failed to connect to db: %s", cfg.DatabaseURL)
 			return nil, nil, err
