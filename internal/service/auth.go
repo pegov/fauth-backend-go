@@ -201,11 +201,19 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (st
 	}
 
 	if yes {
-		// TODO
+		// TODO: error to var
 		return "", errors.New("user was kicked")
 	}
 
-	// TODO: check mass logout
+	ml, err := s.userRepo.GetMassLogout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if refreshTokenClaims.Iat <= ml.Unix() {
+		// TODO: error to var
+		return "", errors.New("user in mass logout")
+	}
 
 	user, err := s.userRepo.Get(ctx, refreshTokenClaims.ID)
 	if err != nil {
