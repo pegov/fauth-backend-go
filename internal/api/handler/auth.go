@@ -44,9 +44,9 @@ func (h *authHandler) setAccessCookie(
 		Name:     h.cfg.AccessTokenCookieName,
 		Value:    accessToken,
 		Path:     "/",
-		Domain:   h.cfg.HttpDomain,
+		Domain:   h.cfg.HTTPDomain,
 		MaxAge:   h.cfg.AcessTokenExpiration,
-		Secure:   h.cfg.HttpSecure,
+		Secure:   h.cfg.HTTPSecure,
 		HttpOnly: true,
 	})
 }
@@ -61,9 +61,9 @@ func (h *authHandler) setCookies(
 		Name:     h.cfg.RefreshTokenCookieName,
 		Value:    refreshToken,
 		Path:     "/",
-		Domain:   h.cfg.HttpDomain,
+		Domain:   h.cfg.HTTPDomain,
 		MaxAge:   h.cfg.RefreshTokenExpiration,
-		Secure:   h.cfg.HttpSecure,
+		Secure:   h.cfg.HTTPSecure,
 		HttpOnly: true,
 	})
 }
@@ -136,18 +136,18 @@ func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 		Name:     h.cfg.AccessTokenCookieName,
 		Value:    "",
 		Path:     "/",
-		Domain:   h.cfg.HttpDomain,
+		Domain:   h.cfg.HTTPDomain,
 		MaxAge:   -1,
-		Secure:   h.cfg.HttpSecure,
+		Secure:   h.cfg.HTTPSecure,
 		HttpOnly: true,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     h.cfg.RefreshTokenCookieName,
 		Value:    "",
 		Path:     "/",
-		Domain:   h.cfg.HttpDomain,
+		Domain:   h.cfg.HTTPDomain,
 		MaxAge:   -1,
-		Secure:   h.cfg.HttpSecure,
+		Secure:   h.cfg.HTTPSecure,
 		HttpOnly: true,
 	})
 	return nil

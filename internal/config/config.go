@@ -15,8 +15,8 @@ type Config struct {
 	DatabaseConnMaxLifetime int    `env:"DATABASE_CONN_MAX_LIFETIME"`
 	CacheURL                string `env:"CACHE_URL"`
 	RecaptchaSecret         string `env:"RECAPTCHA_SECRET"`
-	HttpDomain              string `env:"HTTP_DOMAIN"`
-	HttpSecure              bool   `env:"HTTP_SECURE"`
+	HTTPDomain              string `env:"HTTP_DOMAIN"`
+	HTTPSecure              bool   `env:"HTTP_SECURE"`
 	LoginRatelimit          int    `env:"LOGIN_RATELIMIT"`
 	AccessTokenCookieName   string `env:"ACCESS_TOKEN_COOKIE_NAME"`
 	RefreshTokenCookieName  string `env:"REFRESH_TOKEN_COOKIE_NAME"`
