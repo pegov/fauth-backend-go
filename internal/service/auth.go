@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pegov/fauth-backend-go/internal/captcha"
+	"github.com/pegov/fauth-backend-go/internal/email"
 	"github.com/pegov/fauth-backend-go/internal/model"
 	"github.com/pegov/fauth-backend-go/internal/password"
 	"github.com/pegov/fauth-backend-go/internal/repo"
@@ -26,6 +27,7 @@ type authService struct {
 	captchaClient  captcha.CaptchaClient
 	passwordHasher password.PasswordHasher
 	tokenBackend   token.JwtBackend
+	emailClient    email.EmailClient
 }
 
 func NewAuthService(
@@ -33,12 +35,14 @@ func NewAuthService(
 	captchaClient captcha.CaptchaClient,
 	passwordHasher password.PasswordHasher,
 	tokenBackend token.JwtBackend,
+	emailClient email.EmailClient,
 ) *authService {
 	return &authService{
 		userRepo:       userRepo,
 		captchaClient:  captchaClient,
 		passwordHasher: passwordHasher,
 		tokenBackend:   tokenBackend,
+		emailClient:    emailClient,
 	}
 }
 

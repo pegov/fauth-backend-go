@@ -19,6 +19,7 @@ import (
 
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
+	"github.com/pegov/fauth-backend-go/internal/email"
 	"github.com/pegov/fauth-backend-go/internal/log"
 	"github.com/pegov/fauth-backend-go/internal/password"
 	"github.com/pegov/fauth-backend-go/internal/repo"
@@ -204,12 +205,21 @@ func Prepare(
 	}
 	tokenBackend := token.NewJwtBackend(privateKey, publicKey, jwtKID)
 
+	emailClient := email.NewStdEmailClient(
+		cfg.SMTPUsername,
+		cfg.SMTPPassword,
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+	)
+
 	authService := service.NewAuthService(
 		userRepo,
 		captchaClient,
 		passwordHasher,
 		tokenBackend,
+		emailClient,
 	)
+
 	adminService := service.NewAdminService(userRepo)
 
 	srv := NewServer(

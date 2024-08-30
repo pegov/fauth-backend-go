@@ -22,6 +22,10 @@ type Config struct {
 	RefreshTokenCookieName  string `env:"REFRESH_TOKEN_COOKIE_NAME"`
 	AcessTokenExpiration    int    `env:"ACCESS_TOKEN_EXPIRATION"`
 	RefreshTokenExpiration  int    `env:"REFRESH_TOKEN_EXPIRATION"`
+	SMTPUsername            string `env:"SMTP_USERNAME"`
+	SMTPPassword            string `env:"SMTP_PASSWORD"`
+	SMTPHost                string `env:"SMTP_HOST"`
+	SMTPPort                string `env:"SMTP_PORT"`
 }
 
 func New(getenv func(string) string) (*Config, error) {
