@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
-
-	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
 type ReCaptchaClient struct {
-	logger log.Logger
+	logger *slog.Logger
 	secret string
 }
 
@@ -31,7 +30,7 @@ type response struct {
 func (c *ReCaptchaClient) IsValid(captcha string) bool {
 	res, err := sendReCaptchaRequest(c.secret, captcha)
 	if err != nil {
-		c.logger.Errorf("Failed to send recaptcha request: %s", err)
+		c.logger.Error("Failed to send recaptcha request", slog.Any("err", err))
 		return false
 	}
 

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/email"
-	"github.com/pegov/fauth-backend-go/internal/log"
 	"github.com/pegov/fauth-backend-go/internal/password"
 	"github.com/pegov/fauth-backend-go/internal/repo"
 	"github.com/pegov/fauth-backend-go/internal/service"
@@ -33,11 +33,11 @@ func Prepare(
 	args []string,
 	getenv func(string) string,
 	stdout, stderr io.Writer,
-) (*http.Server, log.Logger, error) {
+) (*http.Server, *slog.Logger, error) {
 	var (
 		host                                  string
 		port                                  int
-		debug, verbose, trace, test           bool
+		debug, verbose, test                  bool
 		accessLog, errorLog                   string
 		privateKeyPath, publicKeyPath, jwtKID string
 	)
@@ -47,7 +47,6 @@ func Prepare(
 	flagSet.IntVar(&port, "port", 15500, "http server port")
 	flagSet.BoolVar(&debug, "debug", true, "turn on debug captcha, mail")
 	flagSet.BoolVar(&verbose, "verbose", true, "log level = DEBUG")
-	flagSet.BoolVar(&trace, "trace", false, "log level = TRACE")
 	flagSet.BoolVar(&test, "test", false, "for testing (sqlite, cache in memory)")
 
 	flagSet.StringVar(&accessLog, "access-log", "", "path to access log file")
@@ -76,43 +75,28 @@ func Prepare(
 		return nil, nil, fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	var logLevel log.Level
-	if trace {
-		logLevel = log.LevelTrace
-	} else if verbose {
-		logLevel = log.LevelDebug
+	var logLevel slog.Level
+	if verbose {
+		logLevel = slog.LevelDebug
 	} else {
-		logLevel = log.LevelInfo
+		logLevel = slog.LevelInfo
 	}
 
-	var logger log.Logger
-	if accessLog == "" && errorLog == "" {
-		logger = log.NewSimpleLogger(logLevel, true)
-	} else {
-		if accessLog != "" && errorLog != "" {
-			var err error
-			logger, err = log.NewSeparateLogger(accessLog, errorLog, true)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to setup separate logger: %w", err)
-			}
-		}
-	}
-
-	if trace {
-		logger.Warnf("trace flag is ON")
-	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	if verbose {
-		logger.Warnf("verbose flag is ON")
+		logger.Warn("verbose flag is ON")
 	}
 
 	if debug {
-		logger.Warnf("debug flag is ON")
+		logger.Warn("debug flag is ON")
 	}
 
 	cfg, err := config.New(getenv)
 	if err != nil {
-		logger.Errorf("Failed to read config")
+		logger.Error("Failed to read config")
 		return nil, nil, err
 	}
 
@@ -123,15 +107,15 @@ func Prepare(
 	if test {
 		db, err = storage.GetInMemoryDB(ctx, logger, ":memory:")
 		if err != nil {
-			logger.Errorf("Failed to connect to db: %s", cfg.DatabaseURL)
+			logger.Error("Failed to connect to db", slog.String("url", cfg.DatabaseURL))
 			return nil, nil, err
 		}
 		defer db.Close()
 
 		cache = storage.NewMemoryCache()
 	} else {
-		logger.Debugf("DB URL: %s", cfg.DatabaseURL)
-		logger.Debugf("CACHE URL: %s", cfg.CacheURL)
+		logger.Debug("", slog.String("db", cfg.DatabaseURL))
+		logger.Debug("", slog.String("cache", cfg.CacheURL))
 
 		db, err = storage.GetDB(
 			ctx,
@@ -142,7 +126,7 @@ func Prepare(
 			time.Duration(cfg.DatabaseConnMaxLifetime)*time.Second,
 		)
 		if err != nil {
-			logger.Errorf("Failed to connect to db: %s", cfg.DatabaseURL)
+			logger.Error("Failed to connect to db", slog.String("db", cfg.DatabaseURL))
 			return nil, nil, err
 		}
 		defer db.Close()
@@ -153,7 +137,7 @@ func Prepare(
 			cfg.CacheURL,
 		)
 		if err != nil {
-			logger.Errorf("Failed to connect to cache: %s", cfg.CacheURL)
+			logger.Error("Failed to connect to cache", slog.String("cache", cfg.CacheURL))
 			return nil, nil, err
 		}
 		defer cacheClient.Close()
@@ -189,17 +173,17 @@ func Prepare(
 	} else {
 		privateKey, err = os.ReadFile(privateKeyPath)
 		if err != nil {
-			logger.Errorf("Failed to read private key path: %s", privateKeyPath)
+			logger.Error("Failed to read private key path", slog.String("privateKeyPath", privateKeyPath))
 			return nil, nil, err
 		}
 		publicKey, err = os.ReadFile(publicKeyPath)
 		if err != nil {
-			logger.Errorf("Failed to read public key path: %s", publicKeyPath)
+			logger.Error("Failed to read public key path", slog.String("publicKeyPath", publicKeyPath))
 			return nil, nil, err
 		}
 		jwtKID = strings.TrimSpace(jwtKID)
 		if jwtKID == "" {
-			logger.Errorf("jwt kid is empty!")
+			logger.Error("jwt kid is empty!")
 			return nil, nil, errors.New("jwt kid is empty")
 		}
 	}
@@ -239,14 +223,14 @@ func Prepare(
 
 func Run(
 	ctx context.Context,
-	logger log.Logger,
+	logger *slog.Logger,
 	signals <-chan os.Signal,
 	httpServer *http.Server,
 ) error {
-	logger.Infof("Starting http server at %s", httpServer.Addr)
+	logger.Info("Starting http server", slog.String("addr", httpServer.Addr))
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Errorf("Server failed to listen and serve: %s", err)
+			logger.Error("Server failed to listen and serve", slog.Any("err", err))
 		}
 	}()
 
@@ -254,13 +238,10 @@ outer:
 	for {
 		switch sig := <-signals; sig {
 		case syscall.SIGHUP:
-			logger.Warnf("Received signal to reset file descriptors for log files: %s", sig)
-			if err := logger.Restart(); err != nil {
-				logger.Errorf("Failed to reset logger: %s", err)
-				break outer
-			}
+			logger.Warn("Received signal to reset file descriptors for log files", slog.Any("sig", sig))
+			// TODO: reset logger fds
 		default:
-			logger.Warnf("Received signal: %s", sig)
+			logger.Warn("Received signal", slog.Any("sig", sig))
 			break outer
 		}
 	}
@@ -268,11 +249,11 @@ outer:
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
-		logger.Errorf("Failed to gracefully shutdown http server: %s", err)
+		logger.Error("Failed to gracefully shutdown http server", slog.Any("err", err))
 		return errors.New("failed to do http server gracefull shutdown")
 	}
 
-	logger.Infof("Graceful shutdown!")
+	logger.Info("Graceful shutdown!")
 
 	return nil
 }

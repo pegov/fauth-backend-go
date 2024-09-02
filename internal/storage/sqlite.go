@@ -3,16 +3,15 @@ package storage
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/jmoiron/sqlx"
-
-	"github.com/pegov/fauth-backend-go/internal/log"
 )
 
 func GetInMemoryDB(
 	ctx context.Context,
-	logger log.Logger,
+	logger *slog.Logger,
 	url string,
 ) (*sqlx.DB, error) {
 	db, err := sqlx.Connect("sqlite3", url)

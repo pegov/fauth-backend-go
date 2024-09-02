@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -9,13 +10,12 @@ import (
 
 	"github.com/pegov/fauth-backend-go/internal/api/handler"
 	"github.com/pegov/fauth-backend-go/internal/config"
-	"github.com/pegov/fauth-backend-go/internal/log"
 	"github.com/pegov/fauth-backend-go/internal/service"
 )
 
 func NewServer(
 	cfg *config.Config,
-	logger log.Logger,
+	logger *slog.Logger,
 	authService service.AuthService,
 	adminService service.AdminService,
 ) http.Handler {
