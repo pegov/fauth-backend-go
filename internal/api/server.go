@@ -20,17 +20,14 @@ func NewServer(
 	adminService service.AdminService,
 ) http.Handler {
 	r := chi.NewRouter()
-	// r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	r.Use(NewSlogMiddleware(logger))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(20 * time.Second))
 
-	pingRouter := chi.NewRouter()
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
 	})
-	r.Mount("/", pingRouter)
 
 	apiV1Router := chi.NewRouter()
 
