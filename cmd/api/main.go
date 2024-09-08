@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	httpServer, logger, err := api.Prepare(
+	httpServer, logger, host, port, err := api.Prepare(
 		ctx,
 		os.Args[1:],
 		os.Getenv,
@@ -35,6 +35,8 @@ func main() {
 		logger,
 		signals,
 		httpServer,
+		host,
+		port,
 	); err != nil {
 		logger.Error("api.Run", slog.Any("err", err))
 		os.Exit(1)

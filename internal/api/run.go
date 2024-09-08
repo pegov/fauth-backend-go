@@ -33,7 +33,7 @@ func Prepare(
 	args []string,
 	getenv func(string) string,
 	stdout, stderr io.Writer,
-) (*http.Server, *slog.Logger, error) {
+) (http.Handler, *slog.Logger, string, int, error) {
 	var (
 		host                                  string
 		port                                  int
@@ -72,7 +72,7 @@ func Prepare(
 	)
 
 	if err := flagSet.Parse(args); err != nil {
-		return nil, nil, fmt.Errorf("failed to parse args: %w", err)
+		return nil, nil, "", 0, fmt.Errorf("failed to parse args: %w", err)
 	}
 
 	var logLevel slog.Level
@@ -97,7 +97,7 @@ func Prepare(
 	cfg, err := config.New(getenv)
 	if err != nil {
 		logger.Error("Failed to read config")
-		return nil, nil, err
+		return nil, nil, "", 0, err
 	}
 
 	var (
@@ -108,7 +108,7 @@ func Prepare(
 		db, err = storage.GetInMemoryDB(ctx, logger, ":memory:")
 		if err != nil {
 			logger.Error("Failed to connect to db", slog.String("url", cfg.DatabaseURL))
-			return nil, nil, err
+			return nil, nil, "", 0, err
 		}
 		defer db.Close()
 
@@ -127,7 +127,7 @@ func Prepare(
 		)
 		if err != nil {
 			logger.Error("Failed to connect to db", slog.String("db", cfg.DatabaseURL))
-			return nil, nil, err
+			return nil, nil, "", 0, err
 		}
 		defer db.Close()
 
@@ -138,7 +138,7 @@ func Prepare(
 		)
 		if err != nil {
 			logger.Error("Failed to connect to cache", slog.String("cache", cfg.CacheURL))
-			return nil, nil, err
+			return nil, nil, "", 0, err
 		}
 		defer cacheClient.Close()
 		cache = storage.NewRedisCacheWrapper(cacheClient)
@@ -160,34 +160,34 @@ func Prepare(
 		passwordHasher = password.NewBcryptPasswordHasher()
 	}
 
-	var (
-		privateKey, publicKey []byte
-	)
+	var tokenBackend token.JwtBackend
 	if test {
 		generateKeys := func(seed []byte) ([]byte, []byte) {
 			private := ed25519.NewKeyFromSeed(seed)
-			return []byte(private), private.Public().([]byte)
+			public := private.Public().(ed25519.PublicKey)
+			return private, public
 		}
-		privateKey, publicKey = generateKeys([]byte(strings.Repeat("a", ed25519.SeedSize)))
+		privateKey, publicKey := generateKeys([]byte(strings.Repeat("a", ed25519.SeedSize)))
 		jwtKID = "1"
+		tokenBackend = token.NewJwtBackendRaw(privateKey, publicKey, jwtKID)
 	} else {
-		privateKey, err = os.ReadFile(privateKeyPath)
+		privateKey, err := os.ReadFile(privateKeyPath)
 		if err != nil {
 			logger.Error("Failed to read private key path", slog.String("privateKeyPath", privateKeyPath))
-			return nil, nil, err
+			return nil, nil, "", 0, err
 		}
-		publicKey, err = os.ReadFile(publicKeyPath)
+		publicKey, err := os.ReadFile(publicKeyPath)
 		if err != nil {
 			logger.Error("Failed to read public key path", slog.String("publicKeyPath", publicKeyPath))
-			return nil, nil, err
+			return nil, nil, "", 0, err
 		}
 		jwtKID = strings.TrimSpace(jwtKID)
 		if jwtKID == "" {
 			logger.Error("jwt kid is empty!")
-			return nil, nil, errors.New("jwt kid is empty")
+			return nil, nil, "", 0, errors.New("jwt kid is empty")
 		}
+		tokenBackend = token.NewJwtBackend(privateKey, publicKey, jwtKID)
 	}
-	tokenBackend := token.NewJwtBackend(privateKey, publicKey, jwtKID)
 
 	emailClient := email.NewStdEmailClient(
 		cfg.SMTPUsername,
@@ -212,21 +212,24 @@ func Prepare(
 		authService,
 		adminService,
 	)
-	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	httpServer := http.Server{
-		Addr:    addr,
-		Handler: srv,
-	}
 
-	return &httpServer, logger, nil
+	return srv, logger, host, port, nil
 }
 
 func Run(
 	ctx context.Context,
 	logger *slog.Logger,
 	signals <-chan os.Signal,
-	httpServer *http.Server,
+	handler http.Handler,
+	host string,
+	port int,
 ) error {
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	httpServer := http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+
 	logger.Info("Starting http server", slog.String("addr", httpServer.Addr))
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

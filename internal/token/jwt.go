@@ -44,6 +44,14 @@ func NewJwtBackend(privateKeyBytes []byte, publicKeyBytes []byte, currentKid str
 	}
 }
 
+func NewJwtBackendRaw(privateKeyBytesRaw, publicKeyBytesRaw []byte, currentKid string) JwtBackend {
+	return &jwtBackend{
+		PrivateKey: privateKeyBytesRaw,
+		PublicKey:  publicKeyBytesRaw,
+		CurrentKid: currentKid,
+	}
+}
+
 func (backend *jwtBackend) Encode(payload *User, expiration time.Duration, tokenType string) (string, error) {
 	token := jwt.New(jwt.SigningMethodEdDSA)
 	token.Header["kid"] = backend.CurrentKid
