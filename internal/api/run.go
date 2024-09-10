@@ -110,7 +110,6 @@ func Prepare(
 			logger.Error("Failed to connect to db", slog.String("url", cfg.DatabaseURL))
 			return nil, nil, "", 0, err
 		}
-		defer db.Close()
 
 		cache = storage.NewMemoryCache()
 	} else {
@@ -129,7 +128,6 @@ func Prepare(
 			logger.Error("Failed to connect to db", slog.String("db", cfg.DatabaseURL))
 			return nil, nil, "", 0, err
 		}
-		defer db.Close()
 
 		cacheClient, err := storage.GetCache(
 			ctx,
@@ -140,7 +138,6 @@ func Prepare(
 			logger.Error("Failed to connect to cache", slog.String("cache", cfg.CacheURL))
 			return nil, nil, "", 0, err
 		}
-		defer cacheClient.Close()
 		cache = storage.NewRedisCacheWrapper(cacheClient)
 	}
 
