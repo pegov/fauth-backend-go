@@ -47,7 +47,7 @@ func Prepare(
 	flagSet.IntVar(&port, "port", 15500, "http server port")
 	flagSet.BoolVar(&debug, "debug", true, "turn on debug captcha, mail")
 	flagSet.BoolVar(&verbose, "verbose", true, "log level = DEBUG")
-	flagSet.BoolVar(&test, "test", false, "for testing (sqlite, cache in memory)")
+	flagSet.BoolVar(&test, "test", false, "for testing (cache in memory)")
 
 	flagSet.StringVar(&accessLog, "access-log", "", "path to access log file")
 	flagSet.StringVar(&errorLog, "error-log", "", "path to error log file")
