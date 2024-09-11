@@ -1,7 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +12,10 @@ import (
 	"path"
 	"runtime"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/pegov/fauth-backend-go/internal/model"
 )
 
 func init() {
@@ -22,8 +29,9 @@ func init() {
 
 func getenv(s string) string {
 	switch s {
-	case "DATABASE_URL",
-		"CACHE_URL",
+	case "DATABASE_URL":
+		return os.Getenv("DATABASE_URL")
+	case "CACHE_URL",
 		"RECAPTCHA_SECRET",
 		"HTTP_DOMAIN",
 		"SMTP_USERNAME",
@@ -47,6 +55,48 @@ func getenv(s string) string {
 	}
 
 	return ""
+}
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	db, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL_POSTGRES"))
+	if err != nil {
+		fmt.Printf("failed to open postgres connection")
+		os.Exit(1)
+	}
+	if _, err := db.Exec(ctx, "DROP DATABASE IF EXISTS fauth_test"); err != nil {
+		fmt.Printf("failed to drop database: %s", err)
+		os.Exit(1)
+	}
+	if _, err := db.Exec(ctx, "CREATE DATABASE fauth_test"); err != nil {
+		fmt.Printf("failed to create database: %s", err)
+		os.Exit(1)
+	}
+	if err := db.Close(ctx); err != nil {
+		fmt.Printf("failed to close postgres connection")
+		os.Exit(1)
+	}
+
+	db, err = pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		fmt.Printf("failed to open fauth connection")
+		os.Exit(1)
+	}
+	if _, err := db.Exec(ctx, "DROP TABLE IF EXISTS auth_user"); err != nil {
+		fmt.Printf("failed to drop user")
+		os.Exit(1)
+	}
+	if _, err := db.Exec(ctx, "DROP TABLE IF EXISTS auth_oauth"); err != nil {
+		fmt.Printf("failed to drop oauth")
+		os.Exit(1)
+	}
+	if err := db.Close(ctx); err != nil {
+		fmt.Printf("failed to close fauth connection")
+		os.Exit(1)
+	}
+
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestPing(t *testing.T) {
@@ -82,5 +132,45 @@ func TestPing(t *testing.T) {
 	expected := "pong"
 	if string(b) != expected {
 		t.Fatalf("expected %s, got %s", expected, b)
+	}
+}
+
+func TestRegister(t *testing.T) {
+	ctx := context.Background()
+	args := []string{
+		"--test",
+	}
+	handler, _, _, _, err := Prepare(
+		ctx,
+		args,
+		getenv,
+		os.Stdout,
+		os.Stderr,
+	)
+	if err != nil {
+		t.Fatalf("failed to prepare handler: %s", err)
+	}
+
+	server := httptest.NewServer(handler)
+	data := model.RegisterRequest{
+		Email:     "test@test.com",
+		Username:  "test",
+		Password1: "test1234",
+		Password2: "test1234",
+	}
+	b, err := json.Marshal(&data)
+	if err != nil {
+		t.Fatalf("failed to serialize json: %s", err)
+	}
+	req, err := http.NewRequest("POST", server.URL+"/api/v1/users/register", bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatalf("failed to build request: %s", err)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get response: %s", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
 }
