@@ -105,9 +105,16 @@ func Prepare(
 		cache storage.CacheOps
 	)
 	if test {
-		db, err = storage.GetInMemoryDB(ctx, logger, ":memory:")
+		db, err = storage.GetDB(
+			ctx,
+			logger,
+			cfg.DatabaseURL,
+			cfg.DatabaseMaxIdleConns,
+			cfg.DatabaseMaxOpenConns,
+			time.Duration(cfg.DatabaseConnMaxLifetime)*time.Second,
+		)
 		if err != nil {
-			logger.Error("Failed to connect to db", slog.String("url", cfg.DatabaseURL))
+			logger.Error("Failed to connect to db", slog.String("db", cfg.DatabaseURL))
 			return nil, nil, "", 0, err
 		}
 
