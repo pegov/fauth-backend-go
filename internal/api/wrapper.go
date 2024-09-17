@@ -8,6 +8,7 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/api/handler"
 	"github.com/pegov/fauth-backend-go/internal/http/bind"
 	"github.com/pegov/fauth-backend-go/internal/http/render"
+	"github.com/pegov/fauth-backend-go/internal/model"
 	"github.com/pegov/fauth-backend-go/internal/service"
 )
 
@@ -15,7 +16,7 @@ type HandlerFuncWithError = func(w http.ResponseWriter, r *http.Request) error
 
 func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var validationError *service.ValidationError
+		var validationError *model.ValidationError
 		var bindJSONError *bind.BindJSONError
 		if err := fn(w, r); err != nil {
 			switch {

@@ -20,18 +20,18 @@ type RegisterRequest struct {
 func (r *RegisterRequest) Validate() error {
 	email, err := validateEmail(r.Email)
 	if err != nil {
-		return err
+		return NewValidationError(err)
 	}
 	r.Email = email
 
 	username, err := validateUsername(r.Username)
 	if err != nil {
-		return err
+		return NewValidationError(err)
 	}
 	r.Username = username
 
 	if err := validatePassword(r.Password1, r.Password2); err != nil {
-		return err
+		return NewValidationError(err)
 	}
 
 	return nil

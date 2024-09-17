@@ -56,18 +56,9 @@ var (
 	ErrInvalidCaptcha            = errors.New("invalid captcha")
 )
 
-// TODO: import
-type ValidationError struct {
-	Inner error
-}
-
-func (err *ValidationError) Error() string {
-	return err.Inner.Error()
-}
-
 func (s *authService) Register(ctx context.Context, request *model.RegisterRequest) (string, string, error) {
 	if err := request.Validate(); err != nil {
-		return "", "", &ValidationError{Inner: err}
+		return "", "", err
 	}
 
 	if !s.captchaClient.IsValid(request.Captcha) {
