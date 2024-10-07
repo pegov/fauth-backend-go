@@ -177,12 +177,18 @@ func Prepare(
 	} else {
 		privateKey, err := os.ReadFile(privateKeyPath)
 		if err != nil {
-			logger.Error("Failed to read private key path", slog.String("privateKeyPath", privateKeyPath))
+			logger.Error(
+				"Failed to read private key path",
+				slog.String("privateKeyPath", privateKeyPath),
+			)
 			return nil, nil, "", 0, err
 		}
 		publicKey, err := os.ReadFile(publicKeyPath)
 		if err != nil {
-			logger.Error("Failed to read public key path", slog.String("publicKeyPath", publicKeyPath))
+			logger.Error(
+				"Failed to read public key path",
+				slog.String("publicKeyPath", publicKeyPath),
+			)
 			return nil, nil, "", 0, err
 		}
 		jwtKID = strings.TrimSpace(jwtKID)
@@ -245,7 +251,10 @@ outer:
 	for {
 		switch sig := <-signals; sig {
 		case syscall.SIGHUP:
-			logger.Warn("Received signal to reset file descriptors for log files", slog.Any("sig", sig))
+			logger.Warn(
+				"Received signal to reset file descriptors for log files",
+				slog.Any("sig", sig),
+			)
 			// TODO: reset logger fds
 		default:
 			logger.Warn("Received signal", slog.Any("sig", sig))
