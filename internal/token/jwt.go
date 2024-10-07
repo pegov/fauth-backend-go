@@ -22,7 +22,11 @@ type jwtBackend struct {
 	CurrentKid string
 }
 
-func NewJwtBackend(privateKeyBytes []byte, publicKeyBytes []byte, currentKid string) JwtBackend {
+func NewJwtBackend(
+	privateKeyBytes []byte,
+	publicKeyBytes []byte,
+	currentKid string,
+) JwtBackend {
 	privateBlock, _ := pem.Decode(privateKeyBytes)
 	privateParsed, err := x509.ParsePKCS8PrivateKey(privateBlock.Bytes)
 	if err != nil {
@@ -44,7 +48,11 @@ func NewJwtBackend(privateKeyBytes []byte, publicKeyBytes []byte, currentKid str
 	}
 }
 
-func NewJwtBackendRaw(privateKeyBytesRaw, publicKeyBytesRaw []byte, currentKid string) JwtBackend {
+func NewJwtBackendRaw(
+	privateKeyBytesRaw,
+	publicKeyBytesRaw []byte,
+	currentKid string,
+) JwtBackend {
 	return &jwtBackend{
 		PrivateKey: privateKeyBytesRaw,
 		PublicKey:  publicKeyBytesRaw,
@@ -52,7 +60,11 @@ func NewJwtBackendRaw(privateKeyBytesRaw, publicKeyBytesRaw []byte, currentKid s
 	}
 }
 
-func (backend *jwtBackend) Encode(payload *User, expiration time.Duration, tokenType string) (string, error) {
+func (backend *jwtBackend) Encode(
+	payload *User,
+	expiration time.Duration,
+	tokenType string,
+) (string, error) {
 	token := jwt.New(jwt.SigningMethodEdDSA)
 	token.Header["kid"] = backend.CurrentKid
 
@@ -84,20 +96,27 @@ var (
 	ErrJwtDecodeInvalidTokenType = errors.New("jwt decode invalid token type")
 )
 
-func (backend *jwtBackend) Decode(tokenString string, tokenType string) (*UserClaims, error) {
+func (backend *jwtBackend) Decode(
+	tokenString string,
+	tokenType string,
+) (*UserClaims, error) {
 	var payload UserClaims
-	token, err := jwt.ParseWithClaims(tokenString, &payload, func(t *jwt.Token) (any, error) {
-		kid, ok := t.Header["kid"]
-		if !ok {
-			return nil, ErrJwtDecodeMissingKid
-		}
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&payload,
+		func(t *jwt.Token) (any, error) {
+			kid, ok := t.Header["kid"]
+			if !ok {
+				return nil, ErrJwtDecodeMissingKid
+			}
 
-		if kid != backend.CurrentKid {
-			return nil, ErrJwtDecodeInvalidKid
-		}
+			if kid != backend.CurrentKid {
+				return nil, ErrJwtDecodeInvalidKid
+			}
 
-		return backend.PublicKey, nil
-	})
+			return backend.PublicKey, nil
+		},
+	)
 
 	if err != nil || !token.Valid {
 		return nil, ErrJwtDecodeInvalidToken

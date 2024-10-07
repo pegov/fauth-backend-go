@@ -39,8 +39,11 @@ func JSON[T any](r *http.Request, model T) error {
 		switch {
 		case errors.As(err, &syntaxError):
 			return &BindJSONError{
-				Status:  http.StatusBadRequest,
-				Message: fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset),
+				Status: http.StatusBadRequest,
+				Message: fmt.Sprintf(
+					"Request body contains badly-formed JSON (at position %d)",
+					syntaxError.Offset,
+				),
 			}
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
@@ -51,8 +54,12 @@ func JSON[T any](r *http.Request, model T) error {
 
 		case errors.As(err, &unmarshalTypeError):
 			return &BindJSONError{
-				Status:  http.StatusBadRequest,
-				Message: fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset),
+				Status: http.StatusBadRequest,
+				Message: fmt.Sprintf(
+					"Request body contains an invalid value for the %q field (at position %d)",
+					unmarshalTypeError.Field,
+					unmarshalTypeError.Offset,
+				),
 			}
 
 		case errors.Is(err, io.EOF):

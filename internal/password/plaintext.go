@@ -11,7 +11,10 @@ func NewPlainTextPasswordHasher() PasswordHasher {
 	return &plainTextPasswordHasher{}
 }
 
-func (ph *plainTextPasswordHasher) Compare(hashedPassword []byte, password []byte) error {
+func (ph *plainTextPasswordHasher) Compare(
+	hashedPassword []byte,
+	password []byte,
+) error {
 	if bytes.Equal(hashedPassword, password) {
 		return nil
 	} else {

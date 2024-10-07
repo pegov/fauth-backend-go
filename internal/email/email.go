@@ -28,7 +28,13 @@ func NewStdEmailClient(username, password, host, port string) EmailClient {
 func (c *StdEmailClient) SendEmail(from, to, message string) error {
 	auth := smtp.PlainAuth("", c.username, c.password, c.host)
 	addr := fmt.Sprintf("%s:%s", c.host, c.port)
-	if err := smtp.SendMail(addr, auth, from, []string{to}, []byte(message)); err != nil {
+	if err := smtp.SendMail(
+		addr,
+		auth,
+		from,
+		[]string{to},
+		[]byte(message),
+	); err != nil {
 		return err
 	}
 

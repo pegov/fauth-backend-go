@@ -56,7 +56,10 @@ var (
 	ErrInvalidCaptcha            = errors.New("invalid captcha")
 )
 
-func (s *authService) Register(ctx context.Context, request *model.RegisterRequest) (string, string, error) {
+func (s *authService) Register(
+	ctx context.Context,
+	request *model.RegisterRequest,
+) (string, string, error) {
 	if err := request.Validate(); err != nil {
 		return "", "", err
 	}
@@ -123,7 +126,10 @@ func (s *authService) Register(ctx context.Context, request *model.RegisterReque
 	return a, r, nil
 }
 
-func (s *authService) Login(ctx context.Context, request *model.LoginRequest) (string, string, error) {
+func (s *authService) Login(
+	ctx context.Context,
+	request *model.LoginRequest,
+) (string, string, error) {
 	login := strings.TrimSpace(request.Login)
 	user, err := s.userRepo.GetByLogin(ctx, login)
 	if err != nil {
@@ -138,7 +144,10 @@ func (s *authService) Login(ctx context.Context, request *model.LoginRequest) (s
 		return "", "", ErrUserPasswordNotSet
 	}
 
-	if s.passwordHasher.Compare([]byte(*user.Password), []byte(request.Password)) != nil {
+	if s.passwordHasher.Compare(
+		[]byte(*user.Password),
+		[]byte(request.Password),
+	) != nil {
 		return "", "", ErrPasswordVerification
 	}
 
@@ -165,7 +174,10 @@ var (
 	ErrTokenDecoding = errors.New("token decoding error")
 )
 
-func (s *authService) Token(ctx context.Context, accessToken string) (*token.User, error) {
+func (s *authService) Token(
+	ctx context.Context,
+	accessToken string,
+) (*token.User, error) {
 	user, err := s.tokenBackend.Decode(accessToken, token.AccessTokenType)
 	if err != nil {
 		return nil, ErrTokenDecoding
@@ -174,8 +186,14 @@ func (s *authService) Token(ctx context.Context, accessToken string) (*token.Use
 	return token.UserPayloadFromUserClaims(user), nil
 }
 
-func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (string, error) {
-	refreshTokenClaims, err := s.tokenBackend.Decode(refreshToken, token.AccessTokenType)
+func (s *authService) RefreshToken(
+	ctx context.Context,
+	refreshToken string,
+) (string, error) {
+	refreshTokenClaims, err := s.tokenBackend.Decode(
+		refreshToken,
+		token.AccessTokenType,
+	)
 	if err != nil {
 		return "", ErrTokenDecoding
 	}

@@ -40,7 +40,11 @@ func (h *adminHandler) GetMassLogout(w http.ResponseWriter, r *http.Request) err
 	return render.JSON(w, http.StatusOK, status)
 }
 
-func actionOnAll(w http.ResponseWriter, r *http.Request, action func(context.Context) error) error {
+func actionOnAll(
+	w http.ResponseWriter,
+	r *http.Request,
+	action func(context.Context) error,
+) error {
 	if err := action(r.Context()); err != nil {
 		return err
 	}
@@ -49,15 +53,25 @@ func actionOnAll(w http.ResponseWriter, r *http.Request, action func(context.Con
 	return nil
 }
 
-func (h *adminHandler) ActivateMassLogout(w http.ResponseWriter, r *http.Request) error {
+func (h *adminHandler) ActivateMassLogout(
+	w http.ResponseWriter,
+	r *http.Request,
+) error {
 	return actionOnAll(w, r, h.adminService.ActivateMassLogout)
 }
 
-func (h *adminHandler) DeactivateMassLogout(w http.ResponseWriter, r *http.Request) error {
+func (h *adminHandler) DeactivateMassLogout(
+	w http.ResponseWriter,
+	r *http.Request,
+) error {
 	return actionOnAll(w, r, h.adminService.DeactivateMassLogout)
 }
 
-func actionOnID(w http.ResponseWriter, r *http.Request, action func(context.Context, int32) error) error {
+func actionOnID(
+	w http.ResponseWriter,
+	r *http.Request,
+	action func(context.Context, int32) error,
+) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {

@@ -33,7 +33,11 @@ func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc 
 				errors.Is(err, service.ErrUserAlreadyExistsUsername),
 				errors.Is(err, service.ErrUserPasswordNotSet),
 				errors.As(err, &validationError):
-				render.JSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
+				render.JSON(
+					w,
+					http.StatusBadRequest,
+					map[string]string{"detail": err.Error()},
+				)
 
 			case errors.Is(err, service.ErrUserNotActive),
 				errors.Is(err, service.ErrPasswordVerification),
@@ -42,11 +46,19 @@ func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc 
 
 			case errors.As(err, &bindJSONError):
 				// TODO: details
-				render.String(w, http.StatusUnprocessableEntity, "Unprocessable entity")
+				render.String(
+					w,
+					http.StatusUnprocessableEntity,
+					"Unprocessable entity",
+				)
 
 			default:
 				logger.Error("Internal server error", slog.Any("err", err))
-				render.String(w, http.StatusInternalServerError, "Internal server error")
+				render.String(
+					w,
+					http.StatusInternalServerError,
+					"Internal server error",
+				)
 			}
 		}
 	}

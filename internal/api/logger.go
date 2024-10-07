@@ -69,7 +69,12 @@ func NewSlogMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 					},
 				}
 
-				logger.LogAttrs(r.Context(), slog.LevelInfo, strconv.Itoa(status), attrs...)
+				logger.LogAttrs(
+					r.Context(),
+					slog.LevelInfo,
+					strconv.Itoa(status),
+					attrs...,
+				)
 			}()
 
 			next.ServeHTTP(ww, r)

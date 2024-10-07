@@ -54,7 +54,11 @@ func (s *adminService) DeactivateMassLogout(ctx context.Context) error {
 	return s.userRepo.DeactivateMassLogout(ctx)
 }
 
-func (s *adminService) actionOnID(ctx context.Context, id int32, action func(context.Context, int32) error) error {
+func (s *adminService) actionOnID(
+	ctx context.Context,
+	id int32,
+	action func(context.Context, int32) error,
+) error {
 	user, err := s.userRepo.Get(ctx, id)
 	if err != nil {
 		return err
