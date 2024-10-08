@@ -47,11 +47,27 @@ func NewUserRepo(db *sqlx.DB, cache storage.CacheOps) UserRepo {
 func (r *userRepo) Create(ctx context.Context, data *model.UserCreate) (int32, error) {
 	var id int32
 	now := time.Now().UTC()
-	if err := r.db.Get(&id, `
+	if err := r.db.Get(
+		&id,
+		`
 		INSERT INTO auth_user(
-			email, username, password, active, verified, created_at, last_login
+			email,
+			username,
+			password,
+			active,
+			verified,
+			created_at,
+			last_login
 		) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
-	`, data.Email, data.Username, data.Password, true, data.Verified, now, now); err != nil {
+		`,
+		data.Email,
+		data.Username,
+		data.Password,
+		true,
+		data.Verified,
+		now,
+		now,
+	); err != nil {
 		return 0, err
 	}
 
@@ -60,9 +76,22 @@ func (r *userRepo) Create(ctx context.Context, data *model.UserCreate) (int32, e
 
 func (r *userRepo) Get(ctx context.Context, id int32) (*entity.User, error) {
 	var user entity.User
-	if err := r.db.Get(&user, `
-		SELECT id, email, username, password, active, verified, created_at, last_login FROM auth_user WHERE id = $1
-	`, id); err != nil {
+	if err := r.db.Get(
+		&user,
+		`
+		SELECT
+			id,
+			email,
+			username,
+			password,
+			active,
+			verified,
+			created_at,
+			last_login
+		FROM auth_user WHERE id = $1
+		`,
+		id,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -75,9 +104,22 @@ func (r *userRepo) Get(ctx context.Context, id int32) (*entity.User, error) {
 
 func (r *userRepo) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
 	var user entity.User
-	if err := r.db.Get(&user, `
-		SELECT id, email, username, password, active, verified, created_at, last_login FROM auth_user WHERE email = $1
-	`, email); err != nil {
+	if err := r.db.Get(
+		&user,
+		`
+		SELECT
+			id,
+			email,
+			username,
+			password,
+			active,
+			verified,
+			created_at,
+			last_login
+		FROM auth_user WHERE email = $1
+		`,
+		email,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -90,9 +132,22 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (*entity.User, 
 
 func (r *userRepo) GetByUsername(ctx context.Context, username string) (*entity.User, error) {
 	var user entity.User
-	if err := r.db.Get(&user, `
-		SELECT id, email, username, password, active, verified, created_at, last_login FROM auth_user WHERE username = $1
-	`, username); err != nil {
+	if err := r.db.Get(
+		&user,
+		`
+		SELECT
+			id,
+			email,
+			username,
+			password,
+			active,
+			verified,
+			created_at,
+			last_login
+		FROM auth_user WHERE username = $1
+		`,
+		username,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -153,12 +208,20 @@ func (r *userRepo) DeactivateMassLogout(ctx context.Context) error {
 }
 
 func (r *userRepo) Ban(ctx context.Context, id int32) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE auth_user SET active = false WHERE id = $1", id)
+	_, err := r.db.ExecContext(
+		ctx,
+		"UPDATE auth_user SET active = false WHERE id = $1",
+		id,
+	)
 	return err
 }
 
 func (r *userRepo) Unban(ctx context.Context, id int32) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE auth_user SET active = true WHERE id = $1", id)
+	_, err := r.db.ExecContext(
+		ctx,
+		"UPDATE auth_user SET active = true WHERE id = $1",
+		id,
+	)
 	return err
 }
 
