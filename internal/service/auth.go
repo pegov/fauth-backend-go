@@ -54,6 +54,8 @@ var (
 	ErrUserPasswordNotSet        = errors.New("password not set")
 	ErrPasswordVerification      = errors.New("user password verification") // 401
 	ErrInvalidCaptcha            = errors.New("invalid captcha")
+	ErrUserWasKicked             = errors.New("user was kicked")
+	ErrUserInMassLogout          = errors.New("user in mass logout")
 )
 
 func (s *authService) Register(
@@ -214,8 +216,7 @@ func (s *authService) RefreshToken(
 	}
 
 	if yes {
-		// TODO: error to var
-		return "", errors.New("user was kicked")
+		return "", ErrUserWasKicked
 	}
 
 	ml, err := s.userRepo.GetMassLogout(ctx)
@@ -224,8 +225,7 @@ func (s *authService) RefreshToken(
 	}
 
 	if refreshTokenClaims.Iat <= ml.Unix() {
-		// TODO: error to var
-		return "", errors.New("user in mass logout")
+		return "", ErrUserInMassLogout
 	}
 
 	user, err := s.userRepo.Get(ctx, refreshTokenClaims.ID)
