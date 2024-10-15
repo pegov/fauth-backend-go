@@ -14,6 +14,16 @@ import (
 
 type HandlerFuncWithError = func(w http.ResponseWriter, r *http.Request) error
 
+type Detail struct {
+	Detail string `json:"detail"`
+}
+
+func NewDetail(detail string) Detail {
+	return Detail{
+		Detail: detail,
+	}
+}
+
 func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var validationError *model.ValidationError
@@ -36,7 +46,7 @@ func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc 
 				render.JSON(
 					w,
 					http.StatusBadRequest,
-					map[string]string{"detail": err.Error()},
+					NewDetail(validationError.Error()),
 				)
 
 			case errors.Is(err, service.ErrUserNotActive),
@@ -48,9 +58,7 @@ func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc 
 				render.JSON(
 					w,
 					bindJSONError.Status,
-					map[string]string{
-						"detail": bindJSONError.Message,
-					},
+					NewDetail(bindJSONError.Message),
 				)
 
 			default:
