@@ -45,11 +45,12 @@ func makeHandler(fn HandlerFuncWithError, logger *slog.Logger) http.HandlerFunc 
 				render.String(w, http.StatusUnauthorized, "Unauthorized")
 
 			case errors.As(err, &bindJSONError):
-				// TODO: details
-				render.String(
+				render.JSON(
 					w,
-					http.StatusUnprocessableEntity,
-					"Unprocessable entity",
+					bindJSONError.Status,
+					map[string]string{
+						"detail": bindJSONError.Message,
+					},
 				)
 
 			default:
