@@ -15,7 +15,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/model"
+)
+
+var (
+	cfg *config.Config
 )
 
 func init() {
@@ -24,6 +29,26 @@ func init() {
 	err := os.Chdir(dir)
 	if err != nil {
 		panic(err)
+	}
+
+	cfg = &config.Config{
+		DatabaseURL:             os.Getenv("DATABASE_URL"),
+		DatabaseMaxIdleConns:    10,
+		DatabaseMaxOpenConns:    10,
+		DatabaseConnMaxLifetime: 10,
+		CacheURL:                "-",
+		RecaptchaSecret:         "-",
+		HTTPDomain:              "-",
+		HTTPSecure:              false,
+		LoginRatelimit:          10,
+		AccessTokenCookieName:   "access",
+		RefreshTokenCookieName:  "refresh",
+		AcessTokenExpiration:    10,
+		RefreshTokenExpiration:  10,
+		SMTPUsername:            "-",
+		SMTPPassword:            "-",
+		SMTPHost:                "-",
+		SMTPPort:                "-",
 	}
 }
 
@@ -106,8 +131,8 @@ func TestPing(t *testing.T) {
 	}
 	handler, _, _, _, err := Prepare(
 		ctx,
+		cfg,
 		args,
-		getenv,
 		os.Stdout,
 		os.Stderr,
 	)
@@ -142,8 +167,8 @@ func TestRegister(t *testing.T) {
 	}
 	handler, _, _, _, err := Prepare(
 		ctx,
+		cfg,
 		args,
-		getenv,
 		os.Stdout,
 		os.Stderr,
 	)
