@@ -30,8 +30,8 @@ import (
 
 func Prepare(
 	ctx context.Context,
+	cfg *config.Config,
 	args []string,
-	getenv func(string) string,
 	stdout, stderr io.Writer,
 ) (http.Handler, *slog.Logger, string, int, error) {
 	var (
@@ -94,15 +94,10 @@ func Prepare(
 		logger.Warn("debug flag is ON")
 	}
 
-	cfg, err := config.New(getenv)
-	if err != nil {
-		logger.Error("Failed to read config")
-		return nil, nil, "", 0, err
-	}
-
 	var (
 		db    *sqlx.DB
 		cache storage.CacheOps
+		err   error
 	)
 	if test {
 		db, err = storage.GetDB(

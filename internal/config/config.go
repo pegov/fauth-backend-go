@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -28,7 +29,7 @@ type Config struct {
 	SMTPPort                string `env:"SMTP_PORT"`
 }
 
-func New(getenv func(string) string) (*Config, error) {
+func New() (*Config, error) {
 	cfg := Config{}
 	var missingEnvs []string
 	var wrongEnvs []string
@@ -41,14 +42,14 @@ func New(getenv func(string) string) (*Config, error) {
 		value := reflect.ValueOf(cfg).FieldByName(f.Name).Interface()
 		switch value.(type) {
 		case string:
-			v, ok := readString(getenv, name)
+			v, ok := readString(os.Getenv, name)
 			if ok {
 				reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(v))
 			} else {
 				missingEnvs = append(missingEnvs, name)
 			}
 		case bool:
-			v, ok := readString(getenv, name)
+			v, ok := readString(os.Getenv, name)
 			if ok {
 				v := v == "1" || v == "True" || v == "TRUE" || v == "true" || v == "yes"
 				reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(v))
@@ -56,7 +57,7 @@ func New(getenv func(string) string) (*Config, error) {
 				missingEnvs = append(missingEnvs, name)
 			}
 		case int:
-			v, ok := readString(getenv, name)
+			v, ok := readString(os.Getenv, name)
 			if ok {
 				if n, err := strconv.Atoi(v); err == nil {
 					reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(n))
