@@ -244,20 +244,26 @@ func Run(
 
 outer:
 	for {
-		switch sig := <-signals; sig {
-		case syscall.SIGHUP:
-			logger.Warn(
-				"Received signal to reset file descriptors for log files",
-				slog.Any("sig", sig),
-			)
-			// TODO: reset logger fds
-		default:
-			logger.Warn("Received signal", slog.Any("sig", sig))
+		select {
+		case sig := <-signals:
+			switch sig {
+			case syscall.SIGHUP:
+				logger.Warn(
+					"Received signal to reset file descriptors for log files",
+					slog.Any("sig", sig),
+				)
+				// TODO: reset logger fds
+			case syscall.SIGTERM, syscall.SIGINT:
+				logger.Warn("Received exit signal", slog.Any("sig", sig))
+				break outer
+			}
+		case <-ctx.Done():
+			logger.Warn("Context was canceled")
 			break outer
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
 		logger.Error("Failed to gracefully shutdown http server", slog.Any("err", err))
