@@ -131,8 +131,7 @@ var (
 )
 
 var (
-	// TODO
-	passwordAllowedChars = "abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ123456 "
+	passwordAllowedChars = "abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ123456 !\"#$%&'()*+,-./:;<=>?@[]^_`{|}~"
 )
 
 const (
