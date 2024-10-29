@@ -85,8 +85,14 @@ var (
 	ErrUsernameDifferentLetters  = errors.New("username different letters")
 )
 
-var forbiddenUsernames = []string{"a", "b"}
-var usernameAllowedChars = "abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ"
+var (
+	forbiddenUsernames = []string{"admin", "moderator"}
+)
+
+var (
+	usernameAllowedCharsEn = "abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ"
+	usernameAllowedCharsRu = "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+)
 
 const (
 	usernameMinLength = 4
@@ -100,14 +106,24 @@ func validateUsername(username string) (string, error) {
 		return "", ErrUsernameForbidden
 	}
 
+	var hasEn, hasRu bool
+
 	for _, usernameChar := range username {
 		ok := false
-		for _, allowedChar := range usernameAllowedChars {
+		for _, allowedChar := range usernameAllowedCharsEn {
 			if usernameChar == allowedChar {
+				hasEn = true
 				ok = true
 				break
 			}
+		}
 
+		for _, allowedChar := range usernameAllowedCharsRu {
+			if usernameChar == allowedChar {
+				hasRu = true
+				ok = true
+				break
+			}
 		}
 
 		if !ok {
@@ -115,12 +131,13 @@ func validateUsername(username string) (string, error) {
 		}
 	}
 
+	if hasEn && hasRu {
+		return "", ErrUsernameDifferentLetters
+	}
+
 	if len(username) < usernameMinLength || len(username) > usernameMaxLength {
 		return "", ErrUsernameLength
 	}
-
-	// TODO: mix of en/ru
-
 	return username, nil
 }
 
