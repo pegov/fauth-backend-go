@@ -31,8 +31,8 @@
 ### OAuth
 - [ ] oauth_login
 - [ ] oauth_callback
-- [ ] google
-- [ ] vk
+- [x] google
+- [x] vk
 
 ### Admin
 - [X] get_mass_logout
