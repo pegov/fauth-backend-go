@@ -24,7 +24,7 @@ func main() {
 	cfg, err := config.New()
 	if err != nil {
 		fmt.Fprint(os.Stderr, "Failed to read config")
-		return
+		os.Exit(1)
 	}
 
 	httpServer, logger, host, port, err := api.Prepare(
