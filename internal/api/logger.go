@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	RequestBodyMaxSize  = 64 * 1024 // 64KB
-	ResponseBodyMaxSize = 64 * 1024 // 64KB
+	RequestBodyMaxSize  = 2 * 1024 * 1024 // 2MB
+	ResponseBodyMaxSize = 2 * 1024 * 1024 // 2MB
 )
 
 func NewSlogMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
