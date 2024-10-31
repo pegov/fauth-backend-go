@@ -252,7 +252,6 @@ outer:
 					"Received signal to reset file descriptors for log files",
 					slog.Any("sig", sig),
 				)
-				// TODO: reset logger fds
 			case syscall.SIGTERM, syscall.SIGINT:
 				logger.Warn("Received exit signal", slog.Any("sig", sig))
 				break outer
