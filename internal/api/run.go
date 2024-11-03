@@ -21,6 +21,7 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/email"
+	slogger "github.com/pegov/fauth-backend-go/internal/logger"
 	"github.com/pegov/fauth-backend-go/internal/password"
 	"github.com/pegov/fauth-backend-go/internal/repo"
 	"github.com/pegov/fauth-backend-go/internal/service"
@@ -82,7 +83,7 @@ func Prepare(
 		logLevel = slog.LevelInfo
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	logger := slog.New(slogger.NewColoredHandler(os.Stdout, &slogger.Options{
 		Level: logLevel,
 	}))
 
