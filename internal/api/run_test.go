@@ -52,36 +52,6 @@ func init() {
 	}
 }
 
-func getenv(s string) string {
-	switch s {
-	case "DATABASE_URL":
-		return os.Getenv("DATABASE_URL")
-	case "CACHE_URL",
-		"RECAPTCHA_SECRET",
-		"HTTP_DOMAIN",
-		"SMTP_USERNAME",
-		"SMTP_PASSWORD",
-		"SMTP_HOST",
-		"SMTP_PORT":
-		return "-"
-	case "DATABASE_MAX_IDLE_CONNS",
-		"DATABASE_MAX_OPEN_CONNS",
-		"DATABASE_CONN_MAX_LIFETIME",
-		"LOGIN_RATELIMIT",
-		"ACCESS_TOKEN_EXPIRATION",
-		"REFRESH_TOKEN_EXPIRATION":
-		return "10"
-	case "HTTP_SECURE":
-		return "0"
-	case "ACCESS_TOKEN_COOKIE_NAME":
-		return "access"
-	case "REFRESH_TOKEN_COOKIE_NAME":
-		return "refresh"
-	}
-
-	return ""
-}
-
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 	db, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL_POSTGRES"))
