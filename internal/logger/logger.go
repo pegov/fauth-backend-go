@@ -48,7 +48,7 @@ const (
 
 var (
 	defaultLevel      = LevelInfo
-	defaultTimeFormat = time.StampMilli
+	defaultTimeFormat = time.RFC3339
 )
 
 const errKey = "err"
