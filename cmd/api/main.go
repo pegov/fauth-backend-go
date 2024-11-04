@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,7 +34,7 @@ func main() {
 		os.Stderr,
 	)
 	if err != nil {
-		logger.Error("api.Prepare", slog.Any("err", err))
+		fmt.Fprintf(os.Stderr, "api.Prepare err=%s\n", err)
 		os.Exit(1)
 	}
 
@@ -47,7 +46,7 @@ func main() {
 		host,
 		port,
 	); err != nil {
-		logger.Error("api.Run", slog.Any("err", err))
+		fmt.Fprintf(os.Stderr, "api.Run err=%s\n", err)
 		os.Exit(1)
 	}
 }
