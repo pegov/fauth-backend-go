@@ -261,12 +261,12 @@ func (h *coloredHandler) appendTime(buf *buffer, t time.Time) {
 func (h *coloredHandler) appendLevel(buf *buffer, level slog.Level) {
 	switch {
 	case level < slog.LevelDebug:
-		buf.WriteStringIf(!h.noColor, ansiCyan)
+		buf.WriteStringIf(!h.noColor, ansiPurple)
 		buf.WriteString("TRACE")
 		appendLevelDelta(buf, level-LevelTrace)
 		buf.WriteStringIf(!h.noColor, ansiReset)
 	case level < slog.LevelInfo:
-		buf.WriteStringIf(!h.noColor, ansiBlue)
+		buf.WriteStringIf(!h.noColor, ansiCyan)
 		buf.WriteString("DEBUG")
 		appendLevelDelta(buf, level-slog.LevelDebug)
 		buf.WriteStringIf(!h.noColor, ansiReset)
