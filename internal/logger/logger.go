@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -66,6 +67,7 @@ type coloredHandler struct {
 	replaceAttr func([]string, slog.Attr) slog.Attr
 	timeFormat  string
 	noColor     bool
+	noIndent    bool
 }
 type Options struct {
 	AddSource   bool
@@ -73,6 +75,7 @@ type Options struct {
 	ReplaceAttr func(groups []string, attr slog.Attr) slog.Attr
 	TimeFormat  string
 	NoColor     bool
+	NoIndent    bool
 }
 
 func NewColoredHandler(w io.Writer, opts *Options) slog.Handler {
@@ -378,6 +381,14 @@ func (h *coloredHandler) appendValue(buf *buffer, v slog.Value, quote bool) {
 		case *slog.Source:
 			h.appendSource(buf, cv)
 		default:
+			if !h.noIndent {
+				b, err := json.MarshalIndent(v.Any(), "", "\t")
+				if err == nil {
+					appendString(buf, string(b), false)
+					return
+				}
+			}
+
 			appendString(buf, fmt.Sprintf("%+v", v.Any()), quote)
 		}
 	}
