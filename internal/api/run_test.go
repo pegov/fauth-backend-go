@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,23 +33,35 @@ func init() {
 	}
 
 	cfg = &config.Config{
-		DatabaseURL:             os.Getenv("DATABASE_URL"),
-		DatabaseMaxIdleConns:    10,
-		DatabaseMaxOpenConns:    10,
-		DatabaseConnMaxLifetime: 10,
-		CacheURL:                "-",
-		RecaptchaSecret:         "-",
-		HTTPDomain:              "-",
-		HTTPSecure:              false,
-		LoginRatelimit:          10,
-		AccessTokenCookieName:   "access",
-		RefreshTokenCookieName:  "refresh",
-		AcessTokenExpiration:    10,
-		RefreshTokenExpiration:  10,
-		SMTPUsername:            "-",
-		SMTPPassword:            "-",
-		SMTPHost:                "-",
-		SMTPPort:                "-",
+		Database: config.ConfigDatabase{
+			URL:             os.Getenv("DATABASE_URL"),
+			MaxIdleConns:    10,
+			MaxOpenConns:    10,
+			ConnMaxLifetime: 10,
+		},
+		Cache: config.ConfigCache{
+			URL: "-",
+		},
+		Captcha: config.ConfigCaptcha{
+			RecaptchaSecret: "-",
+		},
+		HTTP: config.ConfigHTTP{
+			Domain: "-",
+			Secure: false,
+		},
+		SMTP: config.ConfigSMTP{
+			Username: "-",
+			Password: "-",
+			Host:     "-",
+			Port:     "-",
+		},
+		App: config.ConfigApp{
+			LoginRatelimit:         10,
+			AccessTokenCookieName:  "access",
+			RefreshTokenCookieName: "refresh",
+			AcessTokenExpiration:   10,
+			RefreshTokenExpiration: 10,
+		},
 	}
 }
 
@@ -99,10 +112,15 @@ func TestPing(t *testing.T) {
 	args := []string{
 		"--test",
 	}
-	handler, _, _, _, err := Prepare(
+	if err := cfg.ParseFlags(args); err != nil {
+		t.Fatalf("failed to parse flags: %s", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	handler, err := Prepare(
 		ctx,
 		cfg,
-		args,
+		logger,
 		os.Stdout,
 		os.Stderr,
 	)
@@ -135,10 +153,15 @@ func TestRegister(t *testing.T) {
 	args := []string{
 		"--test",
 	}
-	handler, _, _, _, err := Prepare(
+	if err := cfg.ParseFlags(args); err != nil {
+		t.Fatalf("failed to parse flags: %s", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	handler, err := Prepare(
 		ctx,
 		cfg,
-		args,
+		logger,
 		os.Stdout,
 		os.Stderr,
 	)
