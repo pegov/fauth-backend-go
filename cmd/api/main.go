@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +12,15 @@ import (
 
 	"github.com/pegov/fauth-backend-go/internal/api"
 	"github.com/pegov/fauth-backend-go/internal/config"
+	slogger "github.com/pegov/fauth-backend-go/internal/logger"
+)
+
+var (
+	host                                  string
+	port                                  int
+	debug, verbose, test                  bool
+	accessLog, errorLog                   string
+	privateKeyPath, publicKeyPath, jwtKID string
 )
 
 func main() {
@@ -22,14 +32,30 @@ func main() {
 
 	cfg, err := config.New()
 	if err != nil {
-		fmt.Fprint(os.Stderr, "Failed to read config")
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	httpServer, logger, host, port, err := api.Prepare(
+	if err := cfg.ParseFlags(os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	var logLevel slog.Level
+	if cfg.Flags.Verbose {
+		logLevel = slog.LevelDebug
+	} else {
+		logLevel = slog.LevelInfo
+	}
+	logger := slog.New(slogger.NewColoredHandler(os.Stdout, &slogger.Options{
+		Level:    logLevel,
+		NoIndent: true,
+	}))
+
+	httpServer, err := api.Prepare(
 		ctx,
 		cfg,
-		os.Args[1:],
+		logger,
 		os.Stdout,
 		os.Stderr,
 	)

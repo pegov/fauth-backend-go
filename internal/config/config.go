@@ -1,102 +1,107 @@
 package config
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
-	"os"
-	"reflect"
-	"strconv"
-	"strings"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	DatabaseURL             string `env:"DATABASE_URL"`
-	DatabaseMaxIdleConns    int    `env:"DATABASE_MAX_IDLE_CONNS"`
-	DatabaseMaxOpenConns    int    `env:"DATABASE_MAX_OPEN_CONNS"`
-	DatabaseConnMaxLifetime int    `env:"DATABASE_CONN_MAX_LIFETIME"`
-	CacheURL                string `env:"CACHE_URL"`
-	RecaptchaSecret         string `env:"RECAPTCHA_SECRET"`
-	HTTPDomain              string `env:"HTTP_DOMAIN"`
-	HTTPSecure              bool   `env:"HTTP_SECURE"`
-	LoginRatelimit          int    `env:"LOGIN_RATELIMIT"`
-	AccessTokenCookieName   string `env:"ACCESS_TOKEN_COOKIE_NAME"`
-	RefreshTokenCookieName  string `env:"REFRESH_TOKEN_COOKIE_NAME"`
-	AcessTokenExpiration    int    `env:"ACCESS_TOKEN_EXPIRATION"`
-	RefreshTokenExpiration  int    `env:"REFRESH_TOKEN_EXPIRATION"`
-	SMTPUsername            string `env:"SMTP_USERNAME"`
-	SMTPPassword            string `env:"SMTP_PASSWORD"`
-	SMTPHost                string `env:"SMTP_HOST"`
-	SMTPPort                string `env:"SMTP_PORT"`
+	Database ConfigDatabase
+	Cache    ConfigCache
+	HTTP     ConfigHTTP
+	SMTP     ConfigSMTP
+	Captcha  ConfigCaptcha
+	App      ConfigApp
+	Flags    Flags
+}
+
+type ConfigDatabase struct {
+	URL             string `envconfig:"DATABASE_URL"`
+	MaxIdleConns    int    `envconfig:"DATABASE_MAX_IDLE_CONNS"`
+	MaxOpenConns    int    `envconfig:"DATABASE_MAX_OPEN_CONNS"`
+	ConnMaxLifetime int    `envconfig:"DATABASE_CONN_MAX_LIFETIME"`
+}
+
+type ConfigCache struct {
+	URL string `envconfig:"CACHE_URL"`
+}
+
+type ConfigHTTP struct {
+	Domain string `env:"HTTP_DOMAIN"`
+	Secure bool   `env:"HTTP_SECURE"`
+}
+
+type ConfigSMTP struct {
+	Username string `env:"SMTP_USERNAME"`
+	Password string `env:"SMTP_PASSWORD"`
+	Host     string `env:"SMTP_HOST"`
+	Port     string `env:"SMTP_PORT"`
+}
+
+type ConfigCaptcha struct {
+	RecaptchaSecret string `env:"RECAPTCHA_SECRET"`
+}
+
+type ConfigApp struct {
+	LoginRatelimit         int    `env:"LOGIN_RATELIMIT"`
+	AccessTokenCookieName  string `env:"ACCESS_TOKEN_COOKIE_NAME"`
+	RefreshTokenCookieName string `env:"REFRESH_TOKEN_COOKIE_NAME"`
+	AcessTokenExpiration   int    `env:"ACCESS_TOKEN_EXPIRATION"`
+	RefreshTokenExpiration int    `env:"REFRESH_TOKEN_EXPIRATION"`
+}
+
+type Flags struct {
+	Host                                  string
+	Port                                  int
+	Debug, Verbose, Test                  bool
+	AccessLog, ErrorLog                   string
+	PrivateKeyPath, PublicKeyPath, JWTKID string
 }
 
 func New() (*Config, error) {
-	cfg := Config{}
-	var missingEnvs []string
-	var wrongEnvs []string
-
-	v := reflect.ValueOf(cfg)
-	fields := reflect.VisibleFields(v.Type())
-	for _, field := range fields {
-		f, _ := reflect.TypeOf(cfg).FieldByName(field.Name)
-		name := f.Tag.Get("env")
-		value := reflect.ValueOf(cfg).FieldByName(f.Name).Interface()
-		switch value.(type) {
-		case string:
-			v, ok := readString(os.Getenv, name)
-			if ok {
-				reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(v))
-			} else {
-				missingEnvs = append(missingEnvs, name)
-			}
-		case bool:
-			v, ok := readString(os.Getenv, name)
-			if ok {
-				v := v == "1" || v == "True" || v == "TRUE" || v == "true" || v == "yes"
-				reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(v))
-			} else {
-				missingEnvs = append(missingEnvs, name)
-			}
-		case int:
-			v, ok := readString(os.Getenv, name)
-			if ok {
-				if n, err := strconv.Atoi(v); err == nil {
-					reflect.ValueOf(&cfg).Elem().FieldByName(f.Name).Set(reflect.ValueOf(n))
-				} else {
-					wrongEnvs = append(wrongEnvs, name)
-				}
-			} else {
-				missingEnvs = append(missingEnvs, name)
-			}
-		}
-	}
-
-	if len(missingEnvs) > 0 || len(wrongEnvs) > 0 {
-		var s string
-		if len(missingEnvs) > 0 {
-			s += fmt.Sprintf("missing envs: %s", strings.Join(missingEnvs, ", "))
-		}
-		if len(wrongEnvs) > 0 {
-			if len(missingEnvs) > 0 {
-				s += ", "
-			}
-			s += fmt.Sprintf("wrong envs: %s", strings.Join(missingEnvs, ", "))
-		}
-		return &cfg, fmt.Errorf(s)
+	var cfg Config
+	if err := envconfig.Process("", &cfg); err != nil {
+		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
 	return &cfg, nil
 }
 
-func (cfg *Config) Pretty() []byte {
-	prettyCfg, _ := json.MarshalIndent(cfg, "", "\t")
-	return prettyCfg
-}
+func (c *Config) ParseFlags(args []string) error {
+	flagSet := flag.NewFlagSet("", flag.ExitOnError)
+	flagSet.StringVar(&c.Flags.Host, "host", "127.0.0.1", "http server host")
+	flagSet.IntVar(&c.Flags.Port, "port", 15500, "http server port")
+	flagSet.BoolVar(&c.Flags.Debug, "debug", true, "turn on debug captcha, mail")
+	flagSet.BoolVar(&c.Flags.Verbose, "verbose", true, "log level = DEBUG")
+	flagSet.BoolVar(&c.Flags.Test, "test", false, "for testing (cache in memory)")
 
-func readString(getenv func(string) string, name string) (string, bool) {
-	v := getenv(name)
-	if v == "" {
-		return "", false
+	flagSet.StringVar(&c.Flags.AccessLog, "access-log", "", "path to access log file")
+	flagSet.StringVar(&c.Flags.ErrorLog, "error-log", "", "path to error log file")
+
+	flagSet.StringVar(
+		&c.Flags.PrivateKeyPath,
+		"jwt-private-key",
+		"",
+		"path to private key file",
+	)
+	flagSet.StringVar(
+		&c.Flags.PublicKeyPath,
+		"jwt-public-key",
+		"",
+		"path to public key file",
+	)
+	flagSet.StringVar(
+		&c.Flags.JWTKID,
+		"jwt-kid",
+		"",
+		"path to public key file",
+	)
+
+	if err := flagSet.Parse(args); err != nil {
+		return fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	return v, true
+	return nil
 }
