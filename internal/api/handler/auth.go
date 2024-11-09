@@ -36,16 +36,28 @@ var (
 	ErrInvalidPathParamType = errors.New("invalid path param type")
 )
 
-func (h *authHandler) setAccessCookie(
+func (h *authHandler) setCookie(
 	w http.ResponseWriter,
-	accessToken string,
+	name, value string,
 ) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     h.cfg.App.AccessTokenCookieName,
-		Value:    accessToken,
+		Name:     name,
+		Value:    value,
 		Path:     "/",
 		Domain:   h.cfg.HTTP.Domain,
 		MaxAge:   h.cfg.App.AcessTokenExpiration,
+		Secure:   h.cfg.HTTP.Secure,
+		HttpOnly: true,
+	})
+}
+
+func (h *authHandler) unsetCookie(w http.ResponseWriter, name string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		Domain:   h.cfg.HTTP.Domain,
+		MaxAge:   -1,
 		Secure:   h.cfg.HTTP.Secure,
 		HttpOnly: true,
 	})
@@ -56,16 +68,8 @@ func (h *authHandler) setCookies(
 	accessToken,
 	refreshToken string,
 ) {
-	h.setAccessCookie(w, accessToken)
-	http.SetCookie(w, &http.Cookie{
-		Name:     h.cfg.App.RefreshTokenCookieName,
-		Value:    refreshToken,
-		Path:     "/",
-		Domain:   h.cfg.HTTP.Domain,
-		MaxAge:   h.cfg.App.RefreshTokenExpiration,
-		Secure:   h.cfg.HTTP.Secure,
-		HttpOnly: true,
-	})
+	h.setCookie(w, h.cfg.App.AccessTokenCookieName, accessToken)
+	h.setCookie(w, h.cfg.App.RefreshTokenCookieName, refreshToken)
 }
 
 func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) error {
@@ -127,29 +131,13 @@ func (h *authHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	h.setAccessCookie(w, accessToken)
+	h.setCookie(w, h.cfg.App.AccessTokenCookieName, accessToken)
 	return nil
 }
 
 func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) error {
-	http.SetCookie(w, &http.Cookie{
-		Name:     h.cfg.App.AccessTokenCookieName,
-		Value:    "",
-		Path:     "/",
-		Domain:   h.cfg.HTTP.Domain,
-		MaxAge:   -1,
-		Secure:   h.cfg.HTTP.Secure,
-		HttpOnly: true,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     h.cfg.App.RefreshTokenCookieName,
-		Value:    "",
-		Path:     "/",
-		Domain:   h.cfg.HTTP.Domain,
-		MaxAge:   -1,
-		Secure:   h.cfg.HTTP.Secure,
-		HttpOnly: true,
-	})
+	h.unsetCookie(w, h.cfg.App.AccessTokenCookieName)
+	h.unsetCookie(w, h.cfg.App.RefreshTokenCookieName)
 	return nil
 }
 
