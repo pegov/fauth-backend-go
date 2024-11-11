@@ -169,13 +169,12 @@ func Prepare(
 
 func Run(
 	ctx context.Context,
+	cfg *config.Config,
 	logger *slog.Logger,
 	signals <-chan os.Signal,
 	handler http.Handler,
-	host string,
-	port int,
 ) error {
-	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	addr := net.JoinHostPort(cfg.Flags.Host, strconv.Itoa(cfg.Flags.Port))
 	httpServer := http.Server{
 		Addr:    addr,
 		Handler: handler,

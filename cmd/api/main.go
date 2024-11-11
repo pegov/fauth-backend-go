@@ -15,14 +15,6 @@ import (
 	slogger "github.com/pegov/fauth-backend-go/internal/logger"
 )
 
-var (
-	host                                  string
-	port                                  int
-	debug, verbose, test                  bool
-	accessLog, errorLog                   string
-	privateKeyPath, publicKeyPath, jwtKID string
-)
-
 func main() {
 	godotenv.Load()
 
@@ -56,11 +48,10 @@ func main() {
 
 	checkErr(api.Run(
 		ctx,
+		cfg,
 		logger,
 		signals,
 		httpServer,
-		host,
-		port,
 	), "api.Run")
 }
 
