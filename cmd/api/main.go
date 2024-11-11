@@ -31,15 +31,8 @@ func main() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	cfg, err := config.New()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	if err := cfg.ParseFlags(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	checkErr(err, "config.New")
+	checkErr(cfg.ParseFlags(os.Args[1:]), "cfg.ParseFlags")
 
 	var logLevel slog.Level
 	if cfg.Flags.Verbose {
@@ -59,20 +52,21 @@ func main() {
 		os.Stdout,
 		os.Stderr,
 	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "api.Prepare err=%s\n", err)
-		os.Exit(1)
-	}
+	checkErr(err, "api.Prepare")
 
-	if err := api.Run(
+	checkErr(api.Run(
 		ctx,
 		logger,
 		signals,
 		httpServer,
 		host,
 		port,
-	); err != nil {
-		fmt.Fprintf(os.Stderr, "api.Run err=%s\n", err)
+	), "api.Run")
+}
+
+func checkErr(err error, description string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: err=%s\n", description, err)
 		os.Exit(1)
 	}
 }
