@@ -61,13 +61,7 @@ func PrepareForTest(
 	cfg.Flags.JWTKID = "1"
 	tokenBackend := token.NewJwtBackendRaw(privateKey, publicKey, cfg.Flags.JWTKID)
 
-	// TODO: mock
-	emailClient := email.NewStdEmailClient(
-		cfg.SMTP.Username,
-		cfg.SMTP.Password,
-		cfg.SMTP.Host,
-		cfg.SMTP.Port,
-	)
+	emailClient := email.NewMockEmailClient()
 
 	authService := service.NewAuthService(
 		userRepo,
