@@ -26,6 +26,69 @@ import (
 	"github.com/pegov/fauth-backend-go/internal/token"
 )
 
+func PrepareForTest(
+	ctx context.Context,
+	cfg *config.Config,
+	logger *slog.Logger,
+	stdout, stderr io.Writer,
+) (http.Handler, error) {
+	db, err := storage.GetDB(
+		ctx,
+		logger,
+		cfg.Database.URL,
+		cfg.Database.MaxIdleConns,
+		cfg.Database.MaxOpenConns,
+		time.Duration(cfg.Database.ConnMaxLifetime)*time.Second,
+	)
+	if err != nil {
+		logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL))
+		return nil, err
+	}
+
+	cache := storage.NewMemoryCache()
+
+	userRepo := repo.NewUserRepo(db, cache)
+
+	passwordHasher := password.NewPlainTextPasswordHasher()
+	captchaClient := captcha.NewDebugCaptchaClient("")
+
+	generateKeys := func(seed []byte) ([]byte, []byte) {
+		private := ed25519.NewKeyFromSeed(seed)
+		public := private.Public().(ed25519.PublicKey)
+		return private, public
+	}
+	privateKey, publicKey := generateKeys([]byte(strings.Repeat("a", ed25519.SeedSize)))
+	cfg.Flags.JWTKID = "1"
+	tokenBackend := token.NewJwtBackendRaw(privateKey, publicKey, cfg.Flags.JWTKID)
+
+	// TODO: mock
+	emailClient := email.NewStdEmailClient(
+		cfg.SMTP.Username,
+		cfg.SMTP.Password,
+		cfg.SMTP.Host,
+		cfg.SMTP.Port,
+	)
+
+	authService := service.NewAuthService(
+		userRepo,
+		captchaClient,
+		passwordHasher,
+		tokenBackend,
+		emailClient,
+	)
+
+	adminService := service.NewAdminService(userRepo)
+
+	srv := NewServer(
+		cfg,
+		logger,
+		authService,
+		adminService,
+	)
+
+	return srv, nil
+}
+
 func Prepare(
 	ctx context.Context,
 	cfg *config.Config,
@@ -45,49 +108,32 @@ func Prepare(
 		cache storage.CacheOps
 		err   error
 	)
-	if cfg.Flags.Test {
-		db, err = storage.GetDB(
-			ctx,
-			logger,
-			cfg.Database.URL,
-			cfg.Database.MaxIdleConns,
-			cfg.Database.MaxOpenConns,
-			time.Duration(cfg.Database.ConnMaxLifetime)*time.Second,
-		)
-		if err != nil {
-			logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL))
-			return nil, err
-		}
+	logger.Debug("", slog.String("db", cfg.Database.URL))
+	logger.Debug("", slog.String("cache", cfg.Cache.URL))
 
-		cache = storage.NewMemoryCache()
-	} else {
-		logger.Debug("", slog.String("db", cfg.Database.URL))
-		logger.Debug("", slog.String("cache", cfg.Cache.URL))
-
-		db, err = storage.GetDB(
-			ctx,
-			logger,
-			cfg.Database.URL,
-			cfg.Database.MaxIdleConns,
-			cfg.Database.MaxOpenConns,
-			time.Duration(cfg.Database.ConnMaxLifetime)*time.Second,
-		)
-		if err != nil {
-			logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL))
-			return nil, err
-		}
-
-		cacheClient, err := storage.GetCache(
-			ctx,
-			logger,
-			cfg.Cache.URL,
-		)
-		if err != nil {
-			logger.Error("Failed to connect to cache", slog.String("cache", cfg.Cache.URL))
-			return nil, err
-		}
-		cache = storage.NewRedisCacheWrapper(cacheClient)
+	db, err = storage.GetDB(
+		ctx,
+		logger,
+		cfg.Database.URL,
+		cfg.Database.MaxIdleConns,
+		cfg.Database.MaxOpenConns,
+		time.Duration(cfg.Database.ConnMaxLifetime)*time.Second,
+	)
+	if err != nil {
+		logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL))
+		return nil, err
 	}
+
+	cacheClient, err := storage.GetCache(
+		ctx,
+		logger,
+		cfg.Cache.URL,
+	)
+	if err != nil {
+		logger.Error("Failed to connect to cache", slog.String("cache", cfg.Cache.URL))
+		return nil, err
+	}
+	cache = storage.NewRedisCacheWrapper(cacheClient)
 
 	userRepo := repo.NewUserRepo(db, cache)
 
@@ -98,47 +144,30 @@ func Prepare(
 		captchaClient = captcha.NewReCaptchaClient(cfg.Captcha.RecaptchaSecret)
 	}
 
-	var passwordHasher password.PasswordHasher
-	if cfg.Flags.Test {
-		passwordHasher = password.NewPlainTextPasswordHasher()
-	} else {
-		passwordHasher = password.NewBcryptPasswordHasher()
-	}
+	passwordHasher := password.NewBcryptPasswordHasher()
 
-	var tokenBackend token.JwtBackend
-	if cfg.Flags.Test {
-		generateKeys := func(seed []byte) ([]byte, []byte) {
-			private := ed25519.NewKeyFromSeed(seed)
-			public := private.Public().(ed25519.PublicKey)
-			return private, public
-		}
-		privateKey, publicKey := generateKeys([]byte(strings.Repeat("a", ed25519.SeedSize)))
-		cfg.Flags.JWTKID = "1"
-		tokenBackend = token.NewJwtBackendRaw(privateKey, publicKey, cfg.Flags.JWTKID)
-	} else {
-		privateKey, err := os.ReadFile(cfg.Flags.PrivateKeyPath)
-		if err != nil {
-			logger.Error(
-				"Failed to read private key path",
-				slog.String("privateKeyPath", cfg.Flags.PrivateKeyPath),
-			)
-			return nil, err
-		}
-		publicKey, err := os.ReadFile(cfg.Flags.PublicKeyPath)
-		if err != nil {
-			logger.Error(
-				"Failed to read public key path",
-				slog.String("publicKeyPath", cfg.Flags.PublicKeyPath),
-			)
-			return nil, err
-		}
-		cfg.Flags.JWTKID = strings.TrimSpace(cfg.Flags.JWTKID)
-		if cfg.Flags.JWTKID == "" {
-			logger.Error("jwt kid is empty!")
-			return nil, errors.New("jwt kid is empty")
-		}
-		tokenBackend = token.NewJwtBackend(privateKey, publicKey, cfg.Flags.JWTKID)
+	privateKey, err := os.ReadFile(cfg.Flags.PrivateKeyPath)
+	if err != nil {
+		logger.Error(
+			"Failed to read private key path",
+			slog.String("privateKeyPath", cfg.Flags.PrivateKeyPath),
+		)
+		return nil, err
 	}
+	publicKey, err := os.ReadFile(cfg.Flags.PublicKeyPath)
+	if err != nil {
+		logger.Error(
+			"Failed to read public key path",
+			slog.String("publicKeyPath", cfg.Flags.PublicKeyPath),
+		)
+		return nil, err
+	}
+	cfg.Flags.JWTKID = strings.TrimSpace(cfg.Flags.JWTKID)
+	if cfg.Flags.JWTKID == "" {
+		logger.Error("jwt kid is empty!")
+		return nil, errors.New("jwt kid is empty")
+	}
+	tokenBackend := token.NewJwtBackend(privateKey, publicKey, cfg.Flags.JWTKID)
 
 	emailClient := email.NewStdEmailClient(
 		cfg.SMTP.Username,

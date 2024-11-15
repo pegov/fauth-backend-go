@@ -117,7 +117,7 @@ func TestPing(t *testing.T) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler, err := Prepare(
+	handler, err := PrepareForTest(
 		ctx,
 		cfg,
 		logger,
@@ -158,7 +158,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler, err := Prepare(
+	handler, err := PrepareForTest(
 		ctx,
 		cfg,
 		logger,
