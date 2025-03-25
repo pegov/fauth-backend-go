@@ -49,7 +49,7 @@ func PrepareForTest(
 
 	userRepo := repo.NewUserRepo(db, cache)
 
-	passwordHasher := password.NewPlainTextPasswordHasher()
+	passwordManager := password.NewPlainTextPasswordHasher()
 	captchaClient := captcha.NewDebugCaptchaClient("")
 
 	generateKeys := func(seed []byte) ([]byte, []byte) {
@@ -66,7 +66,7 @@ func PrepareForTest(
 	authService := service.NewAuthService(
 		userRepo,
 		captchaClient,
-		passwordHasher,
+		passwordManager,
 		tokenBackend,
 		emailClient,
 	)
@@ -138,7 +138,7 @@ func Prepare(
 		captchaClient = captcha.NewReCaptchaClient(cfg.Captcha.RecaptchaSecret)
 	}
 
-	passwordHasher := password.NewBcryptPasswordHasher()
+	passwordManager := password.NewBcryptPasswordHasher()
 
 	privateKey, err := os.ReadFile(cfg.Flags.PrivateKeyPath)
 	if err != nil {
@@ -173,7 +173,7 @@ func Prepare(
 	authService := service.NewAuthService(
 		userRepo,
 		captchaClient,
-		passwordHasher,
+		passwordManager,
 		tokenBackend,
 		emailClient,
 	)

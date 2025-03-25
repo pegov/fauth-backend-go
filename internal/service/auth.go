@@ -25,7 +25,7 @@ type AuthService interface {
 type authService struct {
 	userRepo       repo.UserRepo
 	captchaClient  captcha.CaptchaClient
-	passwordHasher password.PasswordHasher
+	passwordHasher password.PasswordManager
 	tokenBackend   token.JwtBackend
 	emailClient    email.EmailClient
 }
@@ -33,7 +33,7 @@ type authService struct {
 func NewAuthService(
 	userRepo repo.UserRepo,
 	captchaClient captcha.CaptchaClient,
-	passwordHasher password.PasswordHasher,
+	passwordHasher password.PasswordManager,
 	tokenBackend token.JwtBackend,
 	emailClient email.EmailClient,
 ) *authService {

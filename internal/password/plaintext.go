@@ -7,7 +7,7 @@ import (
 
 type plainTextPasswordHasher struct{}
 
-func NewPlainTextPasswordHasher() PasswordHasher {
+func NewPlainTextPasswordHasher() PasswordManager {
 	return &plainTextPasswordHasher{}
 }
 

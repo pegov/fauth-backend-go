@@ -6,7 +6,7 @@ import (
 
 type bcryptPasswordHasher struct{}
 
-func NewBcryptPasswordHasher() PasswordHasher {
+func NewBcryptPasswordHasher() PasswordManager {
 	return &bcryptPasswordHasher{}
 }
 
