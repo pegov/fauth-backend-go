@@ -13,6 +13,7 @@ type Config struct {
 	HTTP     ConfigHTTP
 	SMTP     ConfigSMTP
 	Captcha  ConfigCaptcha
+	OAuth    ConfigOAuth
 	App      ConfigApp
 	Flags    Flags
 }
@@ -42,6 +43,14 @@ type ConfigSMTP struct {
 
 type ConfigCaptcha struct {
 	RecaptchaSecret string `env:"RECAPTCHA_SECRET"`
+}
+
+type ConfigOAuth struct {
+	SocialProviders    []string `env:"SOCIAL_PROVIDERS"`
+	GoogleClientID     string   `env:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret string   `env:"GOOGLE_CLIENT_SECRET"`
+	VKAppID            string   `env:"VK_APP_ID"`
+	VKAppSecret        string   `env:"VK_APP_SECRET"`
 }
 
 type ConfigApp struct {
