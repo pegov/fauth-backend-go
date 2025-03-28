@@ -30,35 +30,35 @@ type ConfigCache struct {
 }
 
 type ConfigHTTP struct {
-	Domain string `env:"HTTP_DOMAIN"`
-	Secure bool   `env:"HTTP_SECURE"`
+	Domain string `envconfig:"HTTP_DOMAIN"`
+	Secure bool   `envconfig:"HTTP_SECURE"`
 }
 
 type ConfigSMTP struct {
-	Username string `env:"SMTP_USERNAME"`
-	Password string `env:"SMTP_PASSWORD"`
-	Host     string `env:"SMTP_HOST"`
-	Port     string `env:"SMTP_PORT"`
+	Username string `envconfig:"SMTP_USERNAME"`
+	Password string `envconfig:"SMTP_PASSWORD"`
+	Host     string `envconfig:"SMTP_HOST"`
+	Port     string `envconfig:"SMTP_PORT"`
 }
 
 type ConfigCaptcha struct {
-	RecaptchaSecret string `env:"RECAPTCHA_SECRET"`
+	RecaptchaSecret string `envconfig:"RECAPTCHA_SECRET"`
 }
 
 type ConfigOAuth struct {
-	SocialProviders    []string `env:"SOCIAL_PROVIDERS"`
-	GoogleClientID     string   `env:"GOOGLE_CLIENT_ID"`
-	GoogleClientSecret string   `env:"GOOGLE_CLIENT_SECRET"`
-	VKAppID            string   `env:"VK_APP_ID"`
-	VKAppSecret        string   `env:"VK_APP_SECRET"`
+	SocialProviders    []string `envconfig:"SOCIAL_PROVIDERS"`
+	GoogleClientID     string   `envconfig:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret string   `envconfig:"GOOGLE_CLIENT_SECRET"`
+	VKAppID            string   `envconfig:"VK_APP_ID"`
+	VKAppSecret        string   `envconfig:"VK_APP_SECRET"`
 }
 
 type ConfigApp struct {
-	LoginRatelimit         int    `env:"LOGIN_RATELIMIT"`
-	AccessTokenCookieName  string `env:"ACCESS_TOKEN_COOKIE_NAME"`
-	RefreshTokenCookieName string `env:"REFRESH_TOKEN_COOKIE_NAME"`
-	AcessTokenExpiration   int    `env:"ACCESS_TOKEN_EXPIRATION"`
-	RefreshTokenExpiration int    `env:"REFRESH_TOKEN_EXPIRATION"`
+	LoginRatelimit         int    `envconfig:"LOGIN_RATELIMIT"`
+	AccessTokenCookieName  string `envconfig:"ACCESS_TOKEN_COOKIE_NAME"`
+	RefreshTokenCookieName string `envconfig:"REFRESH_TOKEN_COOKIE_NAME"`
+	AcessTokenExpiration   int    `envconfig:"ACCESS_TOKEN_EXPIRATION"`
+	RefreshTokenExpiration int    `envconfig:"REFRESH_TOKEN_EXPIRATION"`
 }
 
 type Flags struct {
