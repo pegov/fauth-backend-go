@@ -15,8 +15,8 @@ import (
 )
 
 type AuthService interface {
-	Register(ctx context.Context, request *model.RegisterRequest) (string, string, error)
-	Login(ctx context.Context, request *model.LoginRequest) (string, string, error)
+	Register(ctx context.Context, request *model.RegisterRequest) (*Tokens, error)
+	Login(ctx context.Context, request *model.LoginRequest) (*Tokens, error)
 	Token(ctx context.Context, accessToken string) (*token.User, error)
 	RefreshToken(ctx context.Context, refreshToken string) (string, error)
 	Me(ctx context.Context, id int32) (*model.Me, error)
@@ -58,39 +58,44 @@ var (
 	ErrUserInMassLogout          = errors.New("user in mass logout")
 )
 
+type Tokens struct {
+	Access  string
+	Refresh string
+}
+
 func (s *authService) Register(
 	ctx context.Context,
 	request *model.RegisterRequest,
-) (string, string, error) {
+) (*Tokens, error) {
 	if err := request.Validate(); err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	if !s.captchaClient.IsValid(request.Captcha) {
-		return "", "", ErrInvalidCaptcha
+		return nil, ErrInvalidCaptcha
 	}
 
 	user, err := s.userRepo.GetByEmail(ctx, request.Email)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get user by email: %w", err)
+		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
 
 	if user != nil {
-		return "", "", ErrUserAlreadyExistsEmail
+		return nil, ErrUserAlreadyExistsEmail
 	}
 
 	user, err = s.userRepo.GetByUsername(ctx, request.Username)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get user by username: %w", err)
+		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
 
 	if user != nil {
-		return "", "", ErrUserAlreadyExistsUsername
+		return nil, ErrUserAlreadyExistsUsername
 	}
 
 	passwordHash, err := s.passwordHasher.Hash([]byte(request.Password1))
 	if err != nil {
-		return "", "", fmt.Errorf("unexpected err: %w", err) // if password > 72 bytes (per bcrypt docs)
+		return nil, fmt.Errorf("unexpected err: %w", err) // if password > 72 bytes (per bcrypt docs)
 	}
 
 	userCreate := model.UserCreate{
@@ -102,13 +107,13 @@ func (s *authService) Register(
 
 	id, err := s.userRepo.Create(ctx, &userCreate)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create user: %w", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	// user != nil
 	user, err = s.userRepo.Get(ctx, id)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get user by id: %w", err)
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
 
 	payload := token.User{
@@ -118,39 +123,39 @@ func (s *authService) Register(
 	}
 	a, err := s.tokenBackend.Encode(&payload, 60*60*6, token.AccessTokenType)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	r, err := s.tokenBackend.Encode(&payload, 60*60*24*31, token.RefreshTokenType)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	return a, r, nil
+	return &Tokens{a, r}, nil
 }
 
 func (s *authService) Login(
 	ctx context.Context,
 	request *model.LoginRequest,
-) (string, string, error) {
+) (*Tokens, error) {
 	login := strings.TrimSpace(request.Login)
 	user, err := s.userRepo.GetByLogin(ctx, login)
 	if err != nil {
-		return "", "", ErrUserNotFound
+		return nil, ErrUserNotFound
 	}
 
 	if !user.Active {
-		return "", "", ErrUserNotActive
+		return nil, ErrUserNotActive
 	}
 
 	if user.Password == nil {
-		return "", "", ErrUserPasswordNotSet
+		return nil, ErrUserPasswordNotSet
 	}
 
 	if s.passwordHasher.Compare(
 		[]byte(*user.Password),
 		[]byte(request.Password),
 	) != nil {
-		return "", "", ErrPasswordVerification
+		return nil, ErrPasswordVerification
 	}
 
 	s.userRepo.UpdateLastLogin(ctx, user.ID)
@@ -162,14 +167,14 @@ func (s *authService) Login(
 	}
 	a, err := s.tokenBackend.Encode(&payload, 60*60*6, token.AccessTokenType)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	r, err := s.tokenBackend.Encode(&payload, 60*60*24*31, token.RefreshTokenType)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	return a, r, nil
+	return &Tokens{a, r}, nil
 }
 
 var (

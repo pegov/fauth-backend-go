@@ -78,12 +78,12 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	accessToken, refreshToken, err := h.authService.Register(r.Context(), request)
+	tokens, err := h.authService.Register(r.Context(), request)
 	if err != nil {
 		return err
 	}
 
-	h.setCookies(w, accessToken, refreshToken)
+	h.setCookies(w, tokens.Access, tokens.Refresh)
 	return nil
 }
 
@@ -93,12 +93,12 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	accessToken, refreshToken, err := h.authService.Login(r.Context(), request)
+	tokens, err := h.authService.Login(r.Context(), request)
 	if err != nil {
 		return err
 	}
 
-	h.setCookies(w, accessToken, refreshToken)
+	h.setCookies(w, tokens.Access, tokens.Refresh)
 	return nil
 }
 
