@@ -82,8 +82,8 @@ func (c *Config) ParseFlags(args []string) error {
 	flagSet := flag.NewFlagSet("", flag.ExitOnError)
 	flagSet.StringVar(&c.Flags.Host, "host", "127.0.0.1", "http server host")
 	flagSet.IntVar(&c.Flags.Port, "port", 15500, "http server port")
-	flagSet.BoolVar(&c.Flags.Debug, "debug", true, "turn on debug captcha, mail")
-	flagSet.BoolVar(&c.Flags.Verbose, "verbose", true, "log level = DEBUG")
+	flagSet.BoolVar(&c.Flags.Debug, "debug", false, "turn on debug captcha, mail")
+	flagSet.BoolVar(&c.Flags.Verbose, "verbose", false, "log level = DEBUG")
 	flagSet.BoolVar(&c.Flags.Test, "test", false, "for testing (cache in memory)")
 
 	flagSet.StringVar(&c.Flags.AccessLog, "access-log", "", "path to access log file")
