@@ -195,7 +195,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Category:    "App",
-				Name:        "refresh-token-refresh-name",
+				Name:        "refresh-token-cookie-name",
 				Destination: &cfg.App.RefreshTokenCookieName,
 				Sources:     cli.EnvVars("APP_REFRESH_TOKEN_COOKIE_NAME"),
 				Local:       true,
