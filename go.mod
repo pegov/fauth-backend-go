@@ -8,8 +8,8 @@ require (
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/joho/godotenv v1.5.1
-	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/redis/go-redis/v9 v9.5.1
+	github.com/urfave/cli/v3 v3.2.0
 	golang.org/x/crypto v0.22.0
 )
 
@@ -20,7 +20,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
