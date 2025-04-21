@@ -301,15 +301,19 @@ func main() {
 				os.Stdout,
 				os.Stderr,
 			)
-			checkErr(err, "api.Prepare")
+			if err != nil {
+				return fmt.Errorf("api.Prepare: %w", err)
+			}
 
-			checkErr(api.Run(
+			if err := api.Run(
 				ctx,
 				cfg,
 				logger,
 				signals,
 				httpServer,
-			), "api.Run")
+			); err != nil {
+				return fmt.Errorf("api.Run: %w", err)
+			}
 
 			return nil
 		},
