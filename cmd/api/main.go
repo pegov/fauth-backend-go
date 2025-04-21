@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -25,8 +27,50 @@ func main() {
 
 	cfg := &config.Config{}
 
+	helpPrinterCustomOrig := cli.HelpPrinterCustom
+	cli.HelpPrinterCustom = func(out io.Writer, templ string, data any, customFuncs map[string]any) {
+		if customFuncs == nil {
+			customFuncs = map[string]any{}
+		}
+		customFuncs["isEmpty"] = func(v any) bool {
+			return reflect.ValueOf(v).IsZero()
+		}
+		helpPrinterCustomOrig(out, templ, data, customFuncs)
+	}
+
+	cli.RootCommandHelpTemplate = `NAME:
+   {{template "helpNameTemplate" .}}
+
+USAGE:
+   {{if .UsageText}}{{wrap .UsageText 3}}{{else}}{{.FullName}} {{if .VisibleFlags}}[global options]{{end}}{{if .VisibleCommands}} [command [command options]]{{end}}{{if .ArgsUsage}} {{.ArgsUsage}}{{else}}{{if .Arguments}} [arguments...]{{end}}{{end}}{{end}}{{if .Version}}{{if not .HideVersion}}
+
+VERSION:
+   {{.Version}}{{end}}{{end}}{{if .Description}}
+
+DESCRIPTION:
+   {{template "descriptionTemplate" .}}{{end}}
+{{- if len .Authors}}
+
+AUTHOR{{template "authorsTemplate" .}}{{end}}{{if .VisibleCommands}}
+
+COMMANDS:{{template "visibleCommandCategoryTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
+
+GLOBAL OPTIONS:{{range .VisibleFlagCategories}}
+   {{if .Name}}{{.Name}}
+
+   {{end}}{{$flglen := len .Flags}}{{range $i, $e := .Flags}}{{if eq (subtract $flglen $i) 1}}{{$e}} {{if $e.Required}}REQUIRED{{else}}{{if and (isEmpty $e.Value) (not $e.IsBoolFlag)}}OPTIONAL{{end}}{{end}}
+{{else}}{{$e}} {{if $e.Required}}REQUIRED{{else}}{{if and (isEmpty $e.Value) (not $e.IsBoolFlag)}}OPTIONAL{{end}}{{end}}{{end}}
+   {{end}}{{end}}{{else if .VisibleFlags}}
+
+GLOBAL OPTIONS:{{template "visibleFlagTemplate" .}}{{end}}{{if .Copyright}}
+
+COPYRIGHT:
+   {{template "copyrightTemplate" .}}{{end}}
+`
+
 	cmd := &cli.Command{
 		Name:        "api",
+		Usage:       "fauth backend service",
 		Description: "start api server",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -80,11 +124,10 @@ func main() {
 			&cli.BoolFlag{
 				Category:    "HTTP",
 				Name:        "http-secure",
-				Usage:       "https",
 				Destination: &cfg.HTTP.Secure,
 				Sources:     cli.EnvVars("HTTP_SECURE"),
 				Local:       true,
-				Value:       false,
+				HideDefault: true,
 			},
 			&cli.StringFlag{
 				Category:    "SMTP",
@@ -124,7 +167,7 @@ func main() {
 				Destination: &cfg.Captcha.RecaptchaSecret,
 				Sources:     cli.EnvVars("RECAPTCHA_SECRET"),
 				Local:       true,
-				Required:    true,
+				Required:    false,
 			},
 			&cli.StringSliceFlag{
 				Category:    "OAuth",
@@ -223,7 +266,7 @@ func main() {
 				Destination: &cfg.Flags.Debug,
 				Sources:     cli.EnvVars("DEBUG"),
 				Local:       true,
-				Value:       false,
+				HideDefault: true,
 			},
 			&cli.BoolFlag{
 				Category:    "Flags",
@@ -231,7 +274,7 @@ func main() {
 				Destination: &cfg.Flags.Verbose,
 				Sources:     cli.EnvVars("VERBOSE"),
 				Local:       true,
-				Value:       false,
+				HideDefault: true,
 			},
 			&cli.BoolFlag{
 				Category:    "Flags",
@@ -239,7 +282,7 @@ func main() {
 				Destination: &cfg.Flags.Test,
 				Sources:     cli.EnvVars("TEST"),
 				Local:       true,
-				Value:       false,
+				HideDefault: true,
 			},
 			&cli.StringFlag{
 				Category:    "Flags",
