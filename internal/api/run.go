@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jmoiron/sqlx"
-
 	"github.com/pegov/fauth-backend-go/internal/captcha"
 	"github.com/pegov/fauth-backend-go/internal/config"
 	"github.com/pegov/fauth-backend-go/internal/email"
@@ -98,7 +96,7 @@ func Prepare(
 	}
 
 	var (
-		db    *sqlx.DB
+		db    storage.DB
 		cache storage.CacheOps
 		err   error
 	)
@@ -114,7 +112,7 @@ func Prepare(
 		time.Duration(cfg.Database.ConnMaxLifetime)*time.Second,
 	)
 	if err != nil {
-		logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL))
+		logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL), slog.Any("err", err))
 		return nil, err
 	}
 

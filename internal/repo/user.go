@@ -33,21 +33,56 @@ type UserRepo interface {
 	Unkick(ctx context.Context, id int32) error
 	WasRecentlyBanned(ctx context.Context, id int32) (bool, error)
 	IsKicked(ctx context.Context, id int32) (bool, error)
+	WithTx(context.Context, func(context.Context, UserRepo) error) error
 }
 
 type userRepo struct {
-	db    *sqlx.DB
+	db    storage.DB
 	cache storage.CacheOps
 }
 
-func NewUserRepo(db *sqlx.DB, cache storage.CacheOps) UserRepo {
+func NewUserRepo(db storage.DB, cache storage.CacheOps) UserRepo {
 	return &userRepo{db: db, cache: cache}
+}
+
+func (r *userRepo) WithTx(ctx context.Context, fn func(context.Context, UserRepo) error) (err error) {
+	db, ok := r.db.(*sqlx.DB)
+	if !ok {
+		return errors.New("nested transactions are unsupported")
+	}
+
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("db.BeginTxx: %w", err)
+	}
+	defer func() {
+		if e := tx.Rollback(); e != nil {
+			if err != nil {
+				err = fmt.Errorf("%w, tx.Rollback: %w", err, e)
+			} else {
+				err = fmt.Errorf("tx.Rollback: %w", e)
+			}
+		}
+	}()
+
+	txRepo := NewUserRepo(tx, r.cache)
+
+	if err := fn(ctx, txRepo); err != nil {
+		return fmt.Errorf("fn: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("tx.Commit: %w", err)
+	}
+
+	return nil
 }
 
 func (r *userRepo) Create(ctx context.Context, data *model.UserCreate) (int32, error) {
 	var id int32
 	now := time.Now().UTC()
-	if err := r.db.Get(
+	if err := r.db.GetContext(
+		ctx,
 		&id,
 		`
 		INSERT INTO auth_user(
@@ -76,7 +111,8 @@ func (r *userRepo) Create(ctx context.Context, data *model.UserCreate) (int32, e
 
 func (r *userRepo) Get(ctx context.Context, id int32) (*entity.User, error) {
 	var user entity.User
-	if err := r.db.Get(
+	if err := r.db.GetContext(
+		ctx,
 		&user,
 		`
 		SELECT
@@ -104,7 +140,8 @@ func (r *userRepo) Get(ctx context.Context, id int32) (*entity.User, error) {
 
 func (r *userRepo) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
 	var user entity.User
-	if err := r.db.Get(
+	if err := r.db.GetContext(
+		ctx,
 		&user,
 		`
 		SELECT
@@ -132,7 +169,8 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (*entity.User, 
 
 func (r *userRepo) GetByUsername(ctx context.Context, username string) (*entity.User, error) {
 	var user entity.User
-	if err := r.db.Get(
+	if err := r.db.GetContext(
+		ctx,
 		&user,
 		`
 		SELECT
@@ -175,7 +213,7 @@ func (r *userRepo) GetByLogin(ctx context.Context, login string) (*entity.User, 
 
 func (r *userRepo) UpdateLastLogin(ctx context.Context, id int32) error {
 	now := time.Now().UTC()
-	_, err := r.db.Exec("UPDATE auth_user SET last_login = $1", now)
+	_, err := r.db.ExecContext(ctx, "UPDATE auth_user SET last_login = $1", now)
 	return err
 }
 

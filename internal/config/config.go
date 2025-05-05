@@ -1,63 +1,67 @@
 package config
 
+import "time"
+
 type Config struct {
-	Database ConfigDatabase
-	Cache    ConfigCache
-	HTTP     ConfigHTTP
-	SMTP     ConfigSMTP
-	Captcha  ConfigCaptcha
-	OAuth    ConfigOAuth
-	App      ConfigApp
-	Flags    Flags
+	Database Database `flag:"db" env:"DB"`
+	Cache    Cache
+	HTTP     HTTP
+	SMTP     SMTP
+	Captcha  Captcha
+	OAuth    OAuth `flag:"oauth" env:"OAUTH"`
+	App      App
+	Flags    Flags `flag:"" env:""`
 }
 
-type ConfigDatabase struct {
-	URL             string
-	MaxIdleConns    int
-	MaxOpenConns    int
-	ConnMaxLifetime int
+type Database struct {
+	URL             string        `usage:"url для postgres"`
+	MaxIdleConns    int           `default:"20"`
+	MaxOpenConns    int           `default:"20"`
+	ConnMaxLifetime time.Duration `default:"1m"`
 }
 
-type ConfigCache struct {
+type Cache struct {
 	URL string
 }
 
-type ConfigHTTP struct {
+type HTTP struct {
 	Domain string
 	Secure bool
 }
 
-type ConfigSMTP struct {
+type SMTP struct {
 	Username string
 	Password string
 	Host     string
 	Port     string
 }
 
-type ConfigCaptcha struct {
-	RecaptchaSecret string
+type Captcha struct {
+	RecaptchaSecret string `cli:"optional"`
 }
 
-type ConfigOAuth struct {
-	Providers          []string
-	GoogleClientID     string
-	GoogleClientSecret string
-	VKAppID            string
-	VKAppSecret        string
+type OAuth struct {
+	Providers          []string `cli:"optional"`
+	GoogleClientID     string   `cli:"optional"`
+	GoogleClientSecret string   `cli:"optional"`
+	VKAppID            string   `cli:"optional"`
+	VKAppSecret        string   `cli:"optional"`
 }
 
-type ConfigApp struct {
+type App struct {
 	LoginRatelimit         int
-	AccessTokenCookieName  string
-	RefreshTokenCookieName string
-	AcessTokenExpiration   int
+	AccessTokenCookieName  string `default:"access"`
+	RefreshTokenCookieName string `default:"refresh"`
+	AccessTokenExpiration  int
 	RefreshTokenExpiration int
 }
 
 type Flags struct {
-	Host                                  string
-	Port                                  int
-	Debug, Verbose, Test                  bool
-	AccessLog, ErrorLog                   string
+	Host                                  string `usage:"host for api server"`
+	Port                                  int    `default:"3000"`
+	Debug                                 bool   `env:"-"`
+	Verbose                               bool   `env:"-"`
+	Test                                  bool   `env:"-"`
+	AccessLog, ErrorLog                   string `cli:"optional"`
 	PrivateKeyPath, PublicKeyPath, JWTKID string
 }

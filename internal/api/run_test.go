@@ -33,29 +33,29 @@ func init() {
 	}
 
 	cfg = &config.Config{
-		Database: config.ConfigDatabase{
+		Database: config.Database{
 			URL:             os.Getenv("DATABASE_URL"),
 			MaxIdleConns:    10,
 			MaxOpenConns:    10,
 			ConnMaxLifetime: 10,
 		},
-		Cache: config.ConfigCache{
+		Cache: config.Cache{
 			URL: "-",
 		},
-		Captcha: config.ConfigCaptcha{
+		Captcha: config.Captcha{
 			RecaptchaSecret: "-",
 		},
-		HTTP: config.ConfigHTTP{
+		HTTP: config.HTTP{
 			Domain: "-",
 			Secure: false,
 		},
-		SMTP: config.ConfigSMTP{
+		SMTP: config.SMTP{
 			Username: "-",
 			Password: "-",
 			Host:     "-",
 			Port:     "-",
 		},
-		App: config.ConfigApp{
+		App: config.App{
 			LoginRatelimit:         10,
 			AccessTokenCookieName:  "access",
 			RefreshTokenCookieName: "refresh",

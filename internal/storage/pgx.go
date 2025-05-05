@@ -12,6 +12,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type DB interface {
+	sqlx.ExtContext
+	SelectContext(ctx context.Context, dest any, query string, args ...any) error
+	GetContext(ctx context.Context, dest any, query string, args ...any) error
+}
+
 func GetDB(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -19,7 +25,7 @@ func GetDB(
 	maxIdleConns int,
 	maxOpenConns int,
 	connMaxLifetime time.Duration,
-) (*sqlx.DB, error) {
+) (DB, error) {
 	logger.Info("Parsing DB config...")
 	poolCfg, err := pgxpool.ParseConfig(url)
 	if err != nil {

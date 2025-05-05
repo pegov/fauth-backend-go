@@ -45,7 +45,7 @@ func (h *authHandler) setCookie(
 		Value:    value,
 		Path:     "/",
 		Domain:   h.cfg.HTTP.Domain,
-		MaxAge:   h.cfg.App.AcessTokenExpiration,
+		MaxAge:   h.cfg.App.AccessTokenExpiration,
 		Secure:   h.cfg.HTTP.Secure,
 		HttpOnly: true,
 	})

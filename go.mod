@@ -11,6 +11,7 @@ require (
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/urfave/cli/v3 v3.2.0
 	golang.org/x/crypto v0.22.0
+	golang.org/x/term v0.19.0
 )
 
 require (
@@ -21,5 +22,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
