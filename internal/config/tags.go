@@ -91,7 +91,7 @@ func parseField(
 		flagPrefix = opts.FlagPrefix + "-"
 	}
 
-	argName, ok := t.Tag.Lookup("name")
+	argName, ok := t.Tag.Lookup("flag")
 	if !ok {
 		argName = flagPrefix + toKebabCase(t.Name)
 	}
