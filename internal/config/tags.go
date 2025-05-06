@@ -105,6 +105,8 @@ func parseField(
 		} else {
 			if envName == "-" {
 				disableEnv = true
+			} else {
+				envName = envPrefix + envName
 			}
 		}
 	}
