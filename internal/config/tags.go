@@ -13,6 +13,17 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+var (
+	TagNameEnv        = "env"
+	TagNameEnvPrefix  = "envprefix"
+	TagNameFlag       = "flag"
+	TagNameFlagPrefix = "flagprefix"
+	TagNameCLI        = "cli"
+	TagNameUsage      = "usage"
+	TagNameDefault    = "default"
+	TagNameCategory   = "category"
+)
+
 type CustomFlag struct {
 	Parent *CustomFlag
 	Name   string
@@ -76,6 +87,7 @@ type flagOptionsCommon struct {
 	DisableEnv bool
 	Usage      string
 	Required   bool
+	Hidden     bool
 }
 
 func parseField(
@@ -83,23 +95,34 @@ func parseField(
 	v reflect.Value,
 	opts ParseOptions,
 ) ([]cli.Flag, error) {
-	var envPrefix, flagPrefix string
-	if opts.EnvPrefix != "" {
-		envPrefix = opts.EnvPrefix + "_"
+	var flagPrefix, envPrefix string
+	if v, ok := t.Tag.Lookup(TagNameFlagPrefix); ok {
+		opts.FlagPrefix = v
 	}
+	if v, ok := t.Tag.Lookup(TagNameEnvPrefix); ok {
+		opts.EnvPrefix = v
+	}
+
 	if opts.FlagPrefix != "" {
 		flagPrefix = opts.FlagPrefix + "-"
 	}
+	if opts.EnvPrefix != "" {
+		envPrefix = opts.EnvPrefix + "_"
+	}
 
-	argName, ok := t.Tag.Lookup("flag")
+	argName, ok := t.Tag.Lookup(TagNameFlag)
 	if !ok {
 		argName = flagPrefix + toKebabCase(t.Name)
+	} else if argName == "-" {
+		argName = ""
+	} else {
+		argName = flagPrefix + argName
 	}
 
 	disableEnv := opts.EnvIsDisabled
 	var envName string
 	if !disableEnv {
-		envName, ok = t.Tag.Lookup("env")
+		envName, ok = t.Tag.Lookup(TagNameEnv)
 		if !ok {
 			envName = envPrefix + toScreamingSnakeCase(t.Name)
 		} else {
@@ -111,53 +134,77 @@ func parseField(
 		}
 	}
 
+	category, ok := t.Tag.Lookup(TagNameCategory)
+	if ok && v.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("category tag is allowed only for structures")
+	} else if !ok && v.Kind() == reflect.Struct {
+		category = t.Name
+	} else if !ok && v.Kind() != reflect.Struct {
+		category = opts.Category
+	}
+
 	if !v.CanSet() {
 		return nil, fmt.Errorf("private field: %s", t.Name)
 	}
 
-	var strValue string
-	var hasStrValue bool
+	var defaultValue string
+	var hasDefaultValue bool
 	if !opts.AlreadyHasDefaultValues {
-		strValue, hasStrValue = t.Tag.Lookup("default")
+		defaultValue, hasDefaultValue = t.Tag.Lookup(TagNameDefault)
 	}
 
-	usage, _ := t.Tag.Lookup("usage")
+	usage, _ := t.Tag.Lookup(TagNameUsage)
 
 	var (
 		cliRequired bool
 		cliOptional bool
+		cliHidden   bool
 	)
-	cliOptionsStr, _ := t.Tag.Lookup("cli")
+	cliOptionsStr, _ := t.Tag.Lookup(TagNameCLI)
+	if cliOptionsStr == "-" {
+		return nil, nil
+	}
+
 	if cliOptionsStr != "" {
 		cliOptions := strings.Split(cliOptionsStr, ",")
 		cliRequired = slices.Contains(cliOptions, "required")
 		cliOptional = slices.Contains(cliOptions, "optional")
+		cliHidden = slices.Contains(cliOptions, "hidden")
 	}
 
 	if !cliOptional {
 		cliRequired = cliRequired || opts.RequiredByDefault
 	}
 
+	if cliHidden && cliRequired {
+		return nil, fmt.Errorf("flag %v: must not be hidden and required at the same time, add \"optional\" to cli tag", t.Name)
+	}
+
 	foc := flagOptionsCommon{
 		Name:       argName,
-		Category:   opts.Category,
+		Category:   category,
 		HasValue:   false,
 		Env:        envName,
 		DisableEnv: disableEnv,
 		Usage:      usage,
 		Required:   cliRequired,
+		Hidden:     cliHidden,
 	}
 
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	iface := v.Addr().Interface()
+	addr := v.Addr()
+	configValueIsZero := cliRequired && v.IsZero() && v.Kind() != reflect.Bool && opts.AlreadyHasDefaultValues
 
 	switch v.Kind() {
 	case reflect.Slice:
 		sv := v.Type().Elem().Kind()
 		switch sv {
 		case reflect.String:
+			var arr []string
+			iface := addr.Convert(reflect.TypeOf(&arr)).Interface()
 			dst, ok := iface.(*[]string)
 			if !ok {
 				return nil, fmt.Errorf("failed to cast *[]string: %s", t.Name)
@@ -167,12 +214,12 @@ func parseField(
 				flagOptionsCommon: foc,
 			}
 
-			if opts.AlreadyHasDefaultValues {
+			if opts.AlreadyHasDefaultValues && !configValueIsZero {
 				fo.HasValue = true
 				fo.Value = *dst
-			} else if hasStrValue {
+			} else if hasDefaultValue {
 				fo.HasValue = true
-				fo.Value = strings.Split(strValue, ",")
+				fo.Value = strings.Split(defaultValue, ",")
 			}
 
 			if fo.HasValue {
@@ -185,14 +232,14 @@ func parseField(
 		}
 
 	case reflect.Struct:
-		envPrefixFromTag, hasEnvPrefixFromTag := t.Tag.Lookup("env")
+		envPrefixFromTag, hasEnvPrefixFromTag := t.Tag.Lookup(TagNameEnv)
 		if hasEnvPrefixFromTag {
 			envPrefix = envPrefix + envPrefixFromTag
 		} else {
 			envPrefix = envPrefix + toScreamingSnakeCase(t.Name)
 		}
 
-		flagPrefixFromTag, hasFlagPrefixFromTag := t.Tag.Lookup("flag")
+		flagPrefixFromTag, hasFlagPrefixFromTag := t.Tag.Lookup(TagNameFlag)
 		if hasFlagPrefixFromTag {
 			flagPrefix = flagPrefix + flagPrefixFromTag
 		} else {
@@ -200,16 +247,19 @@ func parseField(
 		}
 
 		newOpts := ParseOptions{
-			Parent:            &opts,
-			Category:          t.Name,
-			EnvPrefix:         envPrefix,
-			EnvIsDisabled:     opts.EnvIsDisabled || envPrefixFromTag == "-",
-			FlagPrefix:        flagPrefix,
-			RequiredByDefault: cliRequired,
+			Parent:                  &opts,
+			Category:                category,
+			EnvPrefix:               envPrefix,
+			EnvIsDisabled:           opts.EnvIsDisabled || envPrefixFromTag == "-",
+			FlagPrefix:              flagPrefix,
+			RequiredByDefault:       cliRequired,
+			AlreadyHasDefaultValues: opts.AlreadyHasDefaultValues,
 		}
 		return ParseFlags(iface, newOpts)
 
 	case reflect.TypeOf(time.Duration(0)).Kind():
+		dur := time.Duration(0)
+		iface := addr.Convert(reflect.TypeOf(&dur)).Interface()
 		dst, ok := iface.(*time.Duration)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *time.Duration: %s", t.Name)
@@ -220,11 +270,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := time.ParseDuration(strValue)
+		} else if hasDefaultValue {
+			v, err := time.ParseDuration(defaultValue)
 			if err != nil {
 				return nil, fmt.Errorf("invalid duration format for %s: %v", t.Name, err)
 			}
@@ -239,6 +289,8 @@ func parseField(
 		return []cli.Flag{durationFlag(fo)}, nil
 
 	case reflect.String:
+		var str string
+		iface := addr.Convert(reflect.TypeOf(&str)).Interface()
 		dst, ok := iface.(*string)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *string: %s", t.Name)
@@ -249,12 +301,12 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
+		} else if hasDefaultValue {
 			fo.HasValue = true
-			fo.Value = strValue
+			fo.Value = defaultValue
 		}
 
 		if fo.HasValue {
@@ -264,6 +316,8 @@ func parseField(
 		return []cli.Flag{stringFlag(fo)}, nil
 
 	case reflect.Int:
+		var tInt int
+		iface := addr.Convert(reflect.TypeOf(&tInt)).Interface()
 		dst, ok := iface.(*int)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *int: %s", t.Name)
@@ -274,11 +328,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.Atoi(strValue)
+		} else if hasDefaultValue {
+			v, err := strconv.Atoi(defaultValue)
 			if err != nil {
 				return nil, err
 			}
@@ -293,6 +347,8 @@ func parseField(
 		return []cli.Flag{intFlag(fo)}, nil
 
 	case reflect.Int8:
+		var tInt8 int8
+		iface := addr.Convert(reflect.TypeOf(&tInt8)).Interface()
 		dst, ok := iface.(*int8)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *int8: %s", t.Name)
@@ -303,11 +359,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseInt(strValue, 10, 8)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseInt(defaultValue, 10, 8)
 			if err != nil {
 				return nil, err
 			}
@@ -322,6 +378,8 @@ func parseField(
 		return []cli.Flag{int8Flag(fo)}, nil
 
 	case reflect.Int16:
+		var tInt16 int16
+		iface := addr.Convert(reflect.TypeOf(&tInt16)).Interface()
 		dst, ok := iface.(*int16)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *int16: %s", t.Name)
@@ -332,11 +390,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseInt(strValue, 10, 16)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseInt(defaultValue, 10, 16)
 			if err != nil {
 				return nil, err
 			}
@@ -351,6 +409,8 @@ func parseField(
 		return []cli.Flag{int16Flag(fo)}, nil
 
 	case reflect.Int32:
+		var tInt32 int32
+		iface := addr.Convert(reflect.TypeOf(&tInt32)).Interface()
 		dst, ok := iface.(*int32)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *int32: %s", t.Name)
@@ -361,11 +421,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseInt(strValue, 10, 32)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseInt(defaultValue, 10, 32)
 			if err != nil {
 				return nil, err
 			}
@@ -380,6 +440,8 @@ func parseField(
 		return []cli.Flag{int32Flag(fo)}, nil
 
 	case reflect.Int64:
+		var tInt64 int64
+		iface := addr.Convert(reflect.TypeOf(&tInt64)).Interface()
 		dst, ok := iface.(*int64)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *int64: %s", t.Name)
@@ -390,11 +452,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseInt(strValue, 10, 64)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseInt(defaultValue, 10, 64)
 			if err != nil {
 				return nil, err
 			}
@@ -409,6 +471,8 @@ func parseField(
 		return []cli.Flag{int64Flag(fo)}, nil
 
 	case reflect.Uint:
+		var tUint uint
+		iface := addr.Convert(reflect.TypeOf(&tUint)).Interface()
 		dst, ok := iface.(*uint)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *uint: %s", t.Name)
@@ -419,11 +483,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseUint(strValue, 10, 0)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseUint(defaultValue, 10, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -438,6 +502,8 @@ func parseField(
 		return []cli.Flag{uintFlag(fo)}, nil
 
 	case reflect.Uint8:
+		var tUint8 uint8
+		iface := addr.Convert(reflect.TypeOf(&tUint8)).Interface()
 		dst, ok := iface.(*uint8)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *uint8: %s", t.Name)
@@ -448,11 +514,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseUint(strValue, 10, 8)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseUint(defaultValue, 10, 8)
 			if err != nil {
 				return nil, err
 			}
@@ -467,6 +533,8 @@ func parseField(
 		return []cli.Flag{uint8Flag(fo)}, nil
 
 	case reflect.Uint16:
+		var tUint16 uint16
+		iface := addr.Convert(reflect.TypeOf(&tUint16)).Interface()
 		dst, ok := iface.(*uint16)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *uint16: %s", t.Name)
@@ -477,11 +545,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseUint(strValue, 10, 16)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseUint(defaultValue, 10, 16)
 			if err != nil {
 				return nil, err
 			}
@@ -496,6 +564,8 @@ func parseField(
 		return []cli.Flag{uint16Flag(fo)}, nil
 
 	case reflect.Uint32:
+		var tUint32 uint32
+		iface := addr.Convert(reflect.TypeOf(&tUint32)).Interface()
 		dst, ok := iface.(*uint32)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *uint32: %s", t.Name)
@@ -506,11 +576,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseUint(strValue, 10, 32)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseUint(defaultValue, 10, 32)
 			if err != nil {
 				return nil, err
 			}
@@ -525,6 +595,8 @@ func parseField(
 		return []cli.Flag{uint32Flag(fo)}, nil
 
 	case reflect.Uint64:
+		var tUint64 uint64
+		iface := addr.Convert(reflect.TypeOf(&tUint64)).Interface()
 		dst, ok := iface.(*uint64)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *uint64: %s", t.Name)
@@ -535,11 +607,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseUint(strValue, 10, 64)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseUint(defaultValue, 10, 64)
 			if err != nil {
 				return nil, err
 			}
@@ -554,6 +626,8 @@ func parseField(
 		return []cli.Flag{uint64Flag(fo)}, nil
 
 	case reflect.Float64:
+		var tFloat64 float64
+		iface := addr.Convert(reflect.TypeOf(&tFloat64)).Interface()
 		dst, ok := iface.(*float64)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *float64: %s", t.Name)
@@ -564,11 +638,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseFloat(strValue, 64)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseFloat(defaultValue, 64)
 			if err != nil {
 				return nil, err
 			}
@@ -583,6 +657,8 @@ func parseField(
 		return []cli.Flag{float64Flag(fo)}, nil
 
 	case reflect.Bool:
+		var tBool bool
+		iface := addr.Convert(reflect.TypeOf(&tBool)).Interface()
 		dst, ok := iface.(*bool)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast *bool: %s", t.Name)
@@ -593,11 +669,11 @@ func parseField(
 			Dest:              dst,
 		}
 
-		if opts.AlreadyHasDefaultValues {
+		if opts.AlreadyHasDefaultValues && !configValueIsZero {
 			fo.HasValue = true
 			fo.Value = *dst
-		} else if hasStrValue {
-			v, err := strconv.ParseBool(strValue)
+		} else if hasDefaultValue {
+			v, err := strconv.ParseBool(defaultValue)
 			if err != nil {
 				return nil, err
 			}
@@ -617,7 +693,7 @@ func parseField(
 }
 
 func stringFlag(opts flagOptions[string]) *cli.StringFlag {
-	flag := &cli.StringFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.StringFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -628,7 +704,7 @@ func stringFlag(opts flagOptions[string]) *cli.StringFlag {
 }
 
 func stringSliceFlag(opts flagOptions[[]string]) *cli.StringSliceFlag {
-	flag := &cli.StringSliceFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.StringSliceFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -639,7 +715,7 @@ func stringSliceFlag(opts flagOptions[[]string]) *cli.StringSliceFlag {
 }
 
 func boolFlag(opts flagOptions[bool]) *cli.BoolFlag {
-	flag := &cli.BoolFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage}
+	flag := &cli.BoolFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -650,7 +726,7 @@ func boolFlag(opts flagOptions[bool]) *cli.BoolFlag {
 }
 
 func intFlag(opts flagOptions[int]) *cli.IntFlag {
-	flag := &cli.IntFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.IntFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -661,7 +737,7 @@ func intFlag(opts flagOptions[int]) *cli.IntFlag {
 }
 
 func int8Flag(opts flagOptions[int8]) *cli.Int8Flag {
-	flag := &cli.Int8Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Int8Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -672,7 +748,7 @@ func int8Flag(opts flagOptions[int8]) *cli.Int8Flag {
 }
 
 func int16Flag(opts flagOptions[int16]) *cli.Int16Flag {
-	flag := &cli.Int16Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Int16Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -683,7 +759,7 @@ func int16Flag(opts flagOptions[int16]) *cli.Int16Flag {
 }
 
 func int32Flag(opts flagOptions[int32]) *cli.Int32Flag {
-	flag := &cli.Int32Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Int32Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -694,7 +770,7 @@ func int32Flag(opts flagOptions[int32]) *cli.Int32Flag {
 }
 
 func int64Flag(opts flagOptions[int64]) *cli.Int64Flag {
-	flag := &cli.Int64Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Int64Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -705,7 +781,7 @@ func int64Flag(opts flagOptions[int64]) *cli.Int64Flag {
 }
 
 func uintFlag(opts flagOptions[uint]) *cli.UintFlag {
-	flag := &cli.UintFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.UintFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -716,7 +792,7 @@ func uintFlag(opts flagOptions[uint]) *cli.UintFlag {
 }
 
 func uint8Flag(opts flagOptions[uint8]) *cli.Uint8Flag {
-	flag := &cli.Uint8Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Uint8Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -727,7 +803,7 @@ func uint8Flag(opts flagOptions[uint8]) *cli.Uint8Flag {
 }
 
 func uint16Flag(opts flagOptions[uint16]) *cli.Uint16Flag {
-	flag := &cli.Uint16Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Uint16Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -738,7 +814,7 @@ func uint16Flag(opts flagOptions[uint16]) *cli.Uint16Flag {
 }
 
 func uint32Flag(opts flagOptions[uint32]) *cli.Uint32Flag {
-	flag := &cli.Uint32Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Uint32Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -749,7 +825,7 @@ func uint32Flag(opts flagOptions[uint32]) *cli.Uint32Flag {
 }
 
 func uint64Flag(opts flagOptions[uint64]) *cli.Uint64Flag {
-	flag := &cli.Uint64Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.Uint64Flag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -760,7 +836,7 @@ func uint64Flag(opts flagOptions[uint64]) *cli.Uint64Flag {
 }
 
 func float64Flag(opts flagOptions[float64]) *cli.FloatFlag {
-	flag := &cli.FloatFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.FloatFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}
@@ -771,7 +847,7 @@ func float64Flag(opts flagOptions[float64]) *cli.FloatFlag {
 }
 
 func durationFlag(opts flagOptions[time.Duration]) *cli.DurationFlag {
-	flag := &cli.DurationFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required}
+	flag := &cli.DurationFlag{Name: opts.Name, Category: opts.Category, Destination: opts.Dest, Usage: opts.Usage, Required: opts.Required, Hidden: opts.Hidden}
 	if opts.HasValue {
 		flag.Value = opts.Value
 	}

@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"reflect"
 	"runtime"
@@ -13,17 +12,6 @@ import (
 )
 
 func CustomizeCLI() {
-	helpPrinterCustomOrig := cli.HelpPrinterCustom
-	cli.HelpPrinterCustom = func(out io.Writer, templ string, data any, customFuncs map[string]any) {
-		if customFuncs == nil {
-			customFuncs = map[string]any{}
-		}
-		customFuncs["isEmpty"] = func(v any) bool {
-			return reflect.ValueOf(v).IsZero()
-		}
-		helpPrinterCustomOrig(out, templ, data, customFuncs)
-	}
-
 	cli.FlagStringer = customStringer
 }
 

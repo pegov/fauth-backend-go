@@ -14,7 +14,7 @@ type Config struct {
 }
 
 type Database struct {
-	URL             string        `usage:"url для postgres"`
+	URL             string        `usage:"URL для postgres"`
 	MaxIdleConns    int           `default:"20"`
 	MaxOpenConns    int           `default:"20"`
 	ConnMaxLifetime time.Duration `default:"1m"`
