@@ -34,8 +34,9 @@ func main() {
 
 	cmd := &cli.Command{
 		Name:        "api",
-		Usage:       "fauth backend service",
-		Description: "start api server",
+		Usage:       "start api server",
+		Description: "fauth backend service",
+		Version:     "0.0.1",
 		Flags:       flags,
 		Action: func(ctx context.Context, c *cli.Command) error {
 			var logLevel slog.Level
