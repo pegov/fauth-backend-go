@@ -23,15 +23,10 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	config.CustomizeCLI()
-
 	var cfg config.Config
-
-	flags, err := config.ParseFlags(&cfg, config.ParseOptions{
-		RequiredByDefault: true,
-	})
+	config.CustomizeCLI()
+	flags, err := config.ParseFlags(&cfg, config.ParseOptions{RequiredByDefault: true})
 	checkErr(err, "parse flags")
-
 	cmd := &cli.Command{
 		Name:        "api",
 		Usage:       "start api server",
