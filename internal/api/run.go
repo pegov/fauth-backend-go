@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"errors"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -28,7 +27,6 @@ func PrepareForTest(
 	ctx context.Context,
 	cfg *config.Config,
 	logger *slog.Logger,
-	stdout, stderr io.Writer,
 ) (http.Handler, error) {
 	db, err := storage.GetDB(
 		ctx,
@@ -85,7 +83,6 @@ func Prepare(
 	ctx context.Context,
 	cfg *config.Config,
 	logger *slog.Logger,
-	stdout, stderr io.Writer,
 ) (http.Handler, error) {
 	if cfg.Flags.Verbose {
 		logger.Warn("verbose flag is ON")

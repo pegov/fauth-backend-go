@@ -45,13 +45,7 @@ func main() {
 				NoIndent: true,
 			}))
 
-			httpServer, err := api.Prepare(
-				ctx,
-				&cfg,
-				logger,
-				os.Stdout,
-				os.Stderr,
-			)
+			httpServer, err := api.Prepare(ctx, &cfg, logger)
 			if err != nil {
 				return fmt.Errorf("api.Prepare: %w", err)
 			}
