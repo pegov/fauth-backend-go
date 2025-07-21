@@ -50,13 +50,7 @@ func main() {
 				return fmt.Errorf("api.Prepare: %w", err)
 			}
 
-			if err := api.Run(
-				ctx,
-				&cfg,
-				logger,
-				signals,
-				httpServer,
-			); err != nil {
+			if err := api.Run(ctx, &cfg, logger, signals, httpServer); err != nil {
 				return fmt.Errorf("api.Run: %w", err)
 			}
 

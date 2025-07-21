@@ -109,15 +109,15 @@ func Prepare(
 		time.Duration(cfg.Database.ConnMaxLifetime)*time.Second,
 	)
 	if err != nil {
-		logger.Error("Failed to connect to db", slog.String("db", cfg.Database.URL), slog.Any("err", err))
+		logger.Error(
+			"Failed to connect to db",
+			slog.String("db", cfg.Database.URL),
+			slog.Any("err", err),
+		)
 		return nil, err
 	}
 
-	cacheClient, err := storage.GetCache(
-		ctx,
-		logger,
-		cfg.Cache.URL,
-	)
+	cacheClient, err := storage.GetCache(ctx, logger, cfg.Cache.URL)
 	if err != nil {
 		logger.Error("Failed to connect to cache", slog.String("cache", cfg.Cache.URL))
 		return nil, err
@@ -175,12 +175,7 @@ func Prepare(
 
 	adminService := service.NewAdminService(userRepo)
 
-	srv := NewServer(
-		cfg,
-		logger,
-		authService,
-		adminService,
-	)
+	srv := NewServer(cfg, logger, authService, adminService)
 
 	return srv, nil
 }
